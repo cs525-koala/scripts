@@ -1,6 +1,14 @@
 #!/bin/sh
 # To be run on each nc that to be bounced...
 
+# Figure out where we really are
+DIR=`dirname $0`
+DIR=`cd $DIR;pwd -P`
+cd $DIR
+
+# Setup environment variables
+. ./setup_vars
+
 # Stop any running NC
 $EUCALYPTUS/etc/init.d/eucalyptus-nc stop
 

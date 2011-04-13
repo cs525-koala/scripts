@@ -5,6 +5,20 @@
 # If we want the frontend running a nc, uncomment the commented out lines
 # Should be run as root in the eucalyptus source directory!
 
+# Figure out where we really are
+DIR=`dirname $0`
+DIR=`cd $DIR;pwd -P`
+cd $DIR
+
+# Setup environment variables
+. ./setup_vars
+
+# Sanity checks
+if [[ $UID -ne 0 ]]; then
+  echo "`basename $0` must be run as root"
+  exit 1
+fi
+
 make install
 
 ##echo "Fixing xenbr0 -> br0 in eucalyptus.conf..."

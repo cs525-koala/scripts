@@ -1,29 +1,38 @@
 #!/bin/sh -e
 
-#TODO: Verify that EUCALYPTUS is set.
-#TODO: Make sure the running user is root.
 #TODO: This should be run from the eucalyptus source tree!
 
-make install
+# Figure out where we really are
+CANON=`readlink -f $0`
+DIR=`dirname $CANON`
+cd $DIR
+
+# Setup environment variables
+. ./setup_vars
+
+# Sanity checks
+if [[ $UID -ne 0 ]]; then
+  echo "`basename $0` must be run as root"
+  exit 1
+fi
+
+SCRIPTS=$EUCALYPTUS/scripts
+
+#make install
 
 OTHERS=""
 OTHERS="$OTHERS cn72.cloud.cs.illinois.edu"
 OTHERS="$OTHERS cn73.cloud.cs.illinois.edu"
 OTHERS="$OTHERS cn74.cloud.cs.illinois.edu"
 
+
 # Rsync updated $EUCALYPTUS tree to other nodes
 for host in $OTHERS; do
-  rsync -a $EUCALYPTUS/ root@$host:$EUCALYPTUS/
+  rsync --progress -e ssh -av $EUCALYPTUS/ root@$host:$EUCALYPTUS/
 done
 
-#
-$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances /vm_images --user eucalyptus --setup --enable cloud --enable walrus --enable sc
-chown eucalyptus -R $EUCALYPTUS
-$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances /vm_images --user eucalyptus --setup --enable cloud --enable walrus --enable sc
-$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --setup
+# Okay now restart the nc's on those hosts...
+for host in $OTHERS; do
+  ssh eucalyptus@$host $SCRIPTS/restart_nc.sh
+done
 
-# Change 'xenbr0' to 'br0' in the config.
-sed -i s/xenbr0/br0/ $EUCALYPTUS/etc/eucalyptus/eucalyptus.conf
-
-# Any other changes?
-$EUCALYPTUS/etc/init.d/eucalyptus-nc restart
