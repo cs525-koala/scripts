@@ -3,6 +3,9 @@
 # Assume EUCALYPTUS variable is set
 # This is for the frontend.
 # If we want the frontend running a nc, uncomment the commented out lines
+# Should be run as root in the eucalyptus source directory!
+
+make install
 
 ##echo "Fixing xenbr0 -> br0 in eucalyptus.conf..."
 ##sed -i "s/xenbr0/br0/" $EUCALYPTUS/etc/eucalyptus/eucalyptus.conf || echo "Search/Replace failed, probably already fixed..."
@@ -30,3 +33,8 @@ $EUCALYPTUS/etc/init.d/eucalyptus-cloud start
 $EUCALYPTUS/etc/init.d/eucalyptus-cc start
 ##$EUCALYPTUS/etc/init.d/eucalyptus-nc start
 
+echo "Registering cn71 -> cn74 CCT nodes..."
+su eucalyptus -c "$EUCALYPTUS/usr/sbin/euca_conf --register-nodes cn71.cloud.cs.illinois.edu"
+su eucalyptus -c "$EUCALYPTUS/usr/sbin/euca_conf --register-nodes cn72.cloud.cs.illinois.edu"
+su eucalyptus -c "$EUCALYPTUS/usr/sbin/euca_conf --register-nodes cn73.cloud.cs.illinois.edu"
+su eucalyptus -c "$EUCALYPTUS/usr/sbin/euca_conf --register-nodes cn74.cloud.cs.illinois.edu"
