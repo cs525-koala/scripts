@@ -6,8 +6,8 @@
 # Should be run as root in the eucalyptus source directory!
 
 # Figure out where we really are
-DIR=`dirname $0`
-DIR=`cd $DIR;pwd -P`
+CANON=`readlink -f $0`
+DIR=`dirname $CANON`
 cd $DIR
 
 # Setup environment variables
