@@ -3,6 +3,9 @@
 # Assume EUCALYPTUS variable is set
 # This is for the frontend.
 # If we want the frontend running a nc, uncomment the commented out lines
+# Should be run as root in the eucalyptus source directory!
+
+make install
 
 ##echo "Fixing xenbr0 -> br0 in eucalyptus.conf..."
 ##sed -i "s/xenbr0/br0/" $EUCALYPTUS/etc/eucalyptus/eucalyptus.conf || echo "Search/Replace failed, probably already fixed..."
