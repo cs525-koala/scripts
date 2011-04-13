@@ -8,4 +8,6 @@ export APR_INCLUDES=/usr/include/apr-1
 export AXIS2C_HOME=$EUCALYPTUS/packages/axis2c-1.6.0
 export LD_LIBRARY_PATH=$AXIS2C_HOME/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$AXIS2C_HOME/modules/rampart:$LD_LIBRARY_PATH
+export JAVA_HOME=/usr/lib/jvm/java-openjdk
+export JAVA=$JAVA_HOME/jre/bin/java
 #echo "Imported eucalyptus variables"
