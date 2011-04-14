@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 # Assume EUCALYPTUS variable is set
 # This is for the frontend.
@@ -8,10 +8,9 @@
 # Figure out where we really are
 CANON=`readlink -f $0`
 DIR=`dirname $CANON`
-cd $DIR
 
 # Setup environment variables
-. ./setup_vars
+. $DIR/setup_vars
 
 # Sanity checks
 if [[ $UID -ne 0 ]]; then
