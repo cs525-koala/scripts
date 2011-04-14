@@ -4,10 +4,9 @@
 # Figure out where we really are
 CANON=`readlink -f $0`
 DIR=`dirname $CANON`
-cd $DIR
 
 # Setup environment variables
-. ./setup_vars
+. $DIR/setup_vars
 
 # Stop any running NC
 $EUCALYPTUS/etc/init.d/eucalyptus-nc stop
