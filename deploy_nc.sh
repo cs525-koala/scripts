@@ -8,8 +8,7 @@ CANON=`readlink -f $0`
 DIR=`dirname $CANON`
 cd $DIR
 
-# Permissions?!
-SHARE=/project/IKB-341568
+SHARE=/project/IKB-341568/vm
 
 # Setup environment variables
 . ./setup_vars
@@ -23,7 +22,7 @@ fi
 OTHERS=""
 OTHERS="$OTHERS cn72.cloud.cs.illinois.edu"
 OTHERS="$OTHERS cn73.cloud.cs.illinois.edu"
-OTHERS="$OTHERS cn74.cloud.cs.illinois.edu"
+#OTHERS="$OTHERS cn74.cloud.cs.illinois.edu"
 
 SCRIPTS=$EUCALYPTUS/scripts
 
@@ -34,10 +33,10 @@ echo "Fixing xenbr0 -> br0 in eucalyptus.conf..."
 sed -i "s/xenbr0/br0/" $EUCALYPTUS/etc/eucalyptus/eucalyptus.conf || echo "Search/Replace failed, probably already fixed..."
 
 # Reconfigure and make sure permissions are peachy...
-$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances $SHARE --user eucalyptus --setup --enable cloud --enable walrus --enable sc
-chown eucalyptus -R $EUCALYPTUS
-$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances $SHARE --user eucalyptus --setup --enable cloud --enable walrus --enable sc
 $EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --setup
+$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances $SHARE --user eucalyptus --setup
+chown eucalyptus -R $EUCALYPTUS
+$EUCALYPTUS/usr/sbin/euca_conf -d $EUCALYPTUS --hypervisor kvm --instances $SHARE --user eucalyptus --setup
 
 # Stop all the nc's
 CMD="$EUCALYPTUS/etc/init.d/eucalyptus-nc stop"
@@ -54,7 +53,7 @@ for host in $OTHERS; do
   echo "Syncing with $host..."
   rsync --progress -e ssh -av $EUCALYPTUS/ root@$host:$EUCALYPTUS/ \
     --exclude var/log \
-    --exclude var/run
+    --exclude var/run >& /tmp/$host.rsync.log || echo "Rsync failed, continuing anyway..."
 done
 
 # Okay now restart the nc's on those hosts...
