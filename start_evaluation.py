@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+#It is assumed that this script is run only on mosyg and only as root
+
 import sys, re, time, subprocess
 
 run_without_eucalyptus = True
@@ -10,13 +12,13 @@ hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 #even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
 
-vm_startup_timeout = 3#00 #(5 min)
+vm_startup_timeout = 300 #(5 min)
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
-vm_emi = "emi-a8720fe6"
+vm_emi = "emi-DBEE158C"
 
-hadoop_instance_count = 16
+hadoop_instance_count = 2
 #"instance" refers to a unique instance id representing the instance
 hadoop_instance_list = [] 
 hadoop_ip_list = []
@@ -112,7 +114,7 @@ clear_slaves_cmd = "echo -n '' > " + hadoop_home + "/conf/slaves"
 clear_slaves_proc = subprocWrapper(clear_slaves_cmd)
 printOutput(clear_slaves_proc)
 
-clear_temp_hosts_cmd = "echo -n '128.174.241.209 mosyg' > " + hosts_working_temp_dir + "/hosts"
+clear_temp_hosts_cmd = "echo '128.174.241.209 mosyg' > " + hosts_working_temp_dir + "/hosts"
 clear_temp_hosts_proc = subprocWrapper(clear_temp_hosts_cmd)
 printOutput(clear_temp_hosts_proc)
 
@@ -184,7 +186,7 @@ for ip in hadoop_ip_list:
     
     hadoop_instance_number += 1
 
-
+#TODO cleanly integrate this with mosygs hosts file
 
 #print these files for sanity 
 
@@ -241,11 +243,11 @@ for instance in hadoop_instance_list:
         instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
         printOutput(instance_kill_proc)
 
-'''
 #set up hadoop
 print "initializing hadoop"
 hadoopInit()
 
+'''
 #launch hadoop job
 hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
 print "running hadoop job, with command: ", hadoop_randomwriter_job_string
