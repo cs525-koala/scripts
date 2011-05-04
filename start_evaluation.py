@@ -112,7 +112,7 @@ clear_slaves_cmd = "echo -n '' > " + hadoop_home + "/conf/slaves"
 clear_slaves_proc = subprocWrapper(clear_slaves_cmd)
 printOutput(clear_slaves_proc)
 
-clear_temp_hosts_cmd = "echo -n '' > " + hosts_working_temp_dir + "/hosts"
+clear_temp_hosts_cmd = "echo -n '128.174.241.209 mosyg' > " + hosts_working_temp_dir + "/hosts"
 clear_temp_hosts_proc = subprocWrapper(clear_temp_hosts_cmd)
 printOutput(clear_temp_hosts_proc)
 
@@ -181,17 +181,48 @@ for ip in hadoop_ip_list:
     slaves_echo_cmd = "echo '" + hostname + "' >> " + hadoop_home + "/conf/slaves"
     slaves_echo_proc = subprocWrapper(slaves_echo_cmd)
     printOutput(slaves_echo_proc)
+    
+    hadoop_instance_number += 1
 
 
-#  copy slaves file to the instances
-for ip in ip_list:
+
+#print these files for sanity 
+
+print "\n\n**************** HOSTS FILE *****************"
+cat_hosts_cmd = "cat " + hosts_working_temp_dir + "/hosts"
+cat_hosts_proc = subprocWrapper(cat_hosts_cmd)
+printOutput(cat_hosts_proc)
+
+print "\n\n**************** SLAVES FILE *****************"
+cat_slaves_cmd = "cat " + hadoop_home + "/conf/slaves"
+cat_slaves_proc = subprocWrapper(cat_slaves_cmd)
+printOutput(cat_slaves_proc)
+
+
+
+#  copy hosts & slaves files to the instances
+
+print "\ncopying hosts and slaves files to instances"
+for ip in hadoop_ip_list:
+    print "\ncopying hosts file to: ", ip
+    scp_hosts_cmd = "scp " + hosts_working_temp_dir + "/hosts " + ip + ":" + "/etc/hosts"
+    if run_without_eucalyptus:
+        print "debug mode, running: " + scp_hosts_cmd
+    else:
+        scp_hosts_proc = subprocWrapper(scp_hosts_cmd)
+        printOutput(scp_hosts_proc)
     print "copying slaves file to: ", ip
     scp_slave_cmd = "scp " + hadoop_home + "/conf/slaves " + ip + ":" + hadoop_home + "/conf/slaves"
-    scp_slave_proc = subprocWrapper(scp_slave_cmd)
-    printOutput(scp_slave_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + scp_slave_cmd
+    else:
+        scp_slave_proc = subprocWrapper(scp_slave_cmd)
+        printOutput(scp_slave_proc)
+
 
 
 # dump useful information and clean up
+
 print "\ninstance dump:"
 print "\nhadoop instances:"
 for instance in hadoop_instance_list:
@@ -204,11 +235,11 @@ for instance in global_instance_list:
 print "\ncleaning up: killing instances"
 for instance in hadoop_instance_list:
     print "killing instance: ", instance
-if run_without_eucalyptus:
-    print "debug mode, killed instance: ", instance
-else:
-    instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
-    printOutput(instance_kill_proc)
+    if run_without_eucalyptus:
+        print "debug mode, killed instance: ", instance
+    else:
+        instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
+        printOutput(instance_kill_proc)
 
 '''
 #set up hadoop
