@@ -4,7 +4,7 @@
 
 import sys, re, time, subprocess
 
-run_without_eucalyptus = True
+run_without_eucalyptus = False
 
 hadoop_home = "/usr/lib/hadoop"
 hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
@@ -49,8 +49,25 @@ def printOutput(proc):
 def subprocWrapper(command):
     return subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
 
-#also updates global_instance_list
-def getNewIPs():
+
+def getAllInstanceIds():
+    new_instance_list = []
+    ip_proc = subprocWrapper("euca-describe-instances")
+    (proc_stdout, proc_stderr) = (ip_proc.stdout, ip_proc.stderr)
+    for line in proc_stdout:
+        word_list = line.split()
+        if len(word_list) > 1 and word_list[0] == "INSTANCE":
+            print "found instance: ", word_list[1] 
+            new_instance_list.append(word_list[1])
+        else:
+            print "not an instance: ", line
+    for line in proc_stderr:
+        print "error: ", line
+    return new_instance_list
+    
+
+
+def getIPs(instance_list):
     new_ip_list = []
     ip_proc = subprocWrapper("euca-describe-instances")
     (proc_stdout, proc_stderr) = (ip_proc.stdout, ip_proc.stderr)
@@ -58,9 +75,8 @@ def getNewIPs():
         word_list = line.split()
         if len(word_list) > 1 and word_list[0] == "INSTANCE":
             print "ip: ", word_list[3], " found for instance: ", word_list[1] 
-            if word_list[1] not in global_instance_list:
+            if word_list[1] in instance_list:
                 new_ip_list.append(word_list[3])
-                global_instance_list.append(word_list[1])
         else:
             print "not an instance: ", line
     for line in proc_stderr:
@@ -83,25 +99,53 @@ def getInstanceIds(proc):
     return new_instance_list
 
 def hadoopInit():
+    print "stopping everything"
     hadoop_stop_cmd = hadoop_home + "/bin/stop-all.sh"
-    hadoop_stop_proc = subprocWrapper(hadoop_stop_cmd)
-    printOutput(hadoop_stop_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_stop_cmd
+    else:
+        hadoop_stop_proc = subprocWrapper(hadoop_stop_cmd)
+        printOutput(hadoop_stop_proc)
     
+    print "clearing hdfs"
     hadoop_clear_hdfs_cmd = "rm -rf " + hadoop_home + "/hdfs/*"
-    hadoop_clear_hdfs_proc = subprocWrapper(hadoop_clear_hdfs_cmd)
-    printOutput(hadoop_clear_hdfs_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_clear_hdfs_cmd
+    else:
+        hadoop_clear_hdfs_proc = subprocWrapper(hadoop_clear_hdfs_cmd)
+        printOutput(hadoop_clear_hdfs_proc)
 
+    print "clearing tmp"
     hadoop_clear_tmp_cmd = "rm -rf " + hadoop_home + "/tmp/*"
-    hadoop_clear_tmp_proc = subprocWrapper(hadoop_clear_tmp_cmd)
-    printOutput(hadoop_clear_tmp_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_clear_tmp_cmd
+    else:
+        hadoop_clear_tmp_proc = subprocWrapper(hadoop_clear_tmp_cmd)
+        printOutput(hadoop_clear_tmp_proc)
 
+    print "clearing logs"
+    hadoop_clear_logs_cmd = "rm -rf " + hadoop_home + "/logs/*"
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_clear_logs_cmd
+    else:
+        hadoop_clear_logs_proc = subprocWrapper(hadoop_clear_logs_cmd)
+        printOutput(hadoop_clear_logs_proc)
+
+    print "formatting namenode"
     hadoop_format_cmd = "echo 'Y' | " + hadoop_home + "/bin/hadoop namenode -format"
-    hadoop_format_proc = subprocWrapper(hadoop_format_cmd)
-    printOutput(hadoop_format_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_format_cmd
+    else:
+        hadoop_format_proc = subprocWrapper(hadoop_format_cmd)
+        printOutput(hadoop_format_proc)
 
+    print "starting everything"
     hadoop_start_cmd = hadoop_home + "/bin/start-all.sh"
-    hadoop_start_proc = subprocWrapper(hadoop_start_cmd)
-    printOutput(hadoop_start_proc)
+    if run_without_eucalyptus:
+        print "debug mode, running: " + hadoop_start_cmd
+    else:
+        hadoop_start_proc = subprocWrapper(hadoop_start_cmd)
+        printOutput(hadoop_start_proc)
 
 
 
@@ -121,9 +165,19 @@ printOutput(clear_temp_hosts_proc)
 
 
 
+
+#for sanity, check (and track) what if any instances are running on startup
+
+global_instance_list = getAllInstanceIds()
+
+
+
+
+
 #get time
 
 start_time = time.gmtime()
+
 
 
 
@@ -162,7 +216,7 @@ if run_without_eucalyptus:
         print "debug mode, adding ip: 1.1.1." + str(instance_number)
         hadoop_ip_list.append("1.1.1." + str(instance_number))
 else:
-    hadoop_ip_list = getNewIPs()
+    hadoop_ip_list = getIPs(hadoop_instance_list)
 print "\nhadoop ips: "
 print hadoop_ip_list
 
@@ -223,6 +277,25 @@ for ip in hadoop_ip_list:
 
 
 
+#set up hadoop
+print "initializing hadoop"
+hadoopInit()
+
+'''
+#launch hadoop job
+hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
+print "running hadoop job, with command: ", hadoop_randomwriter_job_string
+hadoop_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
+printOutput(hadoop_job_proc)
+
+
+
+#after second_job_start_time has elapsed, start second job
+
+
+#after third_job_start_time has elapsed, start third job
+'''
+
 # dump useful information and clean up
 
 print "\ninstance dump:"
@@ -243,21 +316,3 @@ for instance in hadoop_instance_list:
         instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
         printOutput(instance_kill_proc)
 
-#set up hadoop
-print "initializing hadoop"
-hadoopInit()
-
-'''
-#launch hadoop job
-hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
-print "running hadoop job, with command: ", hadoop_randomwriter_job_string
-hadoop_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
-printOutput(hadoop_job_proc)
-
-
-
-#after second_job_start_time has elapsed, start second job
-
-
-#after third_job_start_time has elapsed, start third job
-'''
