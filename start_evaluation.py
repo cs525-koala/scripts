@@ -1,7 +1,11 @@
 #!/usr/bin/python
 
 import sys, re, time, subprocess
+
+run_without_eucalyptus = True
+
 hadoop_home = "/usr/lib/hadoop"
+hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 
 #even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
@@ -12,7 +16,7 @@ third_job_start_time = 3600 #(60 min)
 
 vm_emi = "emi-a8720fe6"
 
-hadoop_instance_count = 1
+hadoop_instance_count = 16
 #"instance" refers to a unique instance id representing the instance
 hadoop_instance_list = [] 
 hadoop_ip_list = []
@@ -101,11 +105,17 @@ def hadoopInit():
 
 #MAIN EXECUTION
 
-#clear old slaves file
 
-clear_proc_command = "echo '' > " + hadoop_home + "/conf/slaves"
-clear_proc = subprocWrapper(clear_proc_command)
-printOutput(clear_proc)
+#clear old slaves file & temp hosts file
+
+clear_slaves_cmd = "echo -n '' > " + hadoop_home + "/conf/slaves"
+clear_slaves_proc = subprocWrapper(clear_slaves_cmd)
+printOutput(clear_slaves_proc)
+
+clear_temp_hosts_cmd = "echo -n '' > " + hosts_working_temp_dir + "/hosts"
+clear_temp_hosts_proc = subprocWrapper(clear_temp_hosts_cmd)
+printOutput(clear_temp_hosts_proc)
+
 
 
 
@@ -118,10 +128,17 @@ start_time = time.gmtime()
 #start hadoop vm's & record instance ids 
 
 print "starting ", hadoop_instance_count, " hadoop VMs"
-hadoop_instance_start_command = "euca-run-instances -n " + str(hadoop_instance_count)+ " " + vm_emi + " -t c1.medium"
-print "running: ", hadoop_instance_start_command
-hadoop_start_proc = subprocWrapper(hadoop_instance_start_command)
-hadoop_instance_list = getInstanceIds(hadoop_start_proc)
+hadoop_instance_start_cmd = "euca-run-instances -n " + str(hadoop_instance_count)+ " " + vm_emi + " -t c1.medium"
+if run_without_eucalyptus:
+    #DEBUG MODE 
+    print "debug mode, would run: ", hadoop_instance_start_cmd
+    print "adding fake instance ids to instance lists"
+    for instance_number in range(hadoop_instance_count):
+        hadoop_instance_list.append("hadoop_instance_" + str(instance_number))
+else:
+    print "running: ", hadoop_instance_start_cmd
+    hadoop_start_proc = subprocWrapper(hadoop_instance_start_cmd)
+    hadoop_instance_list = getInstanceIds(hadoop_start_proc)
 global_instance_list.extend(hadoop_instance_list)
 
 
@@ -129,37 +146,43 @@ global_instance_list.extend(hadoop_instance_list)
 #collect ips for vm_startup_timeout time
 
 #  first, sleep for that length
-print "allowing vms ", vm_startup_timeout, " seconds to start"
+print "\nallowing vms ", vm_startup_timeout, " seconds to start"
 time.sleep(vm_startup_timeout)
 
 
 
 #  parse euca-describe-instances for new ips
-print "getting slave ips from euca-describe-instances"
-hadoop_ip_list = getNewIPs()
+
+print "\ngetting slave ips from euca-describe-instances"
+if run_without_eucalyptus:
+    print "debug mode, using fake ips"
+    for instance_number in range(hadoop_instance_count):
+        print "debug mode, adding ip: 1.1.1." + str(instance_number)
+        hadoop_ip_list.append("1.1.1." + str(instance_number))
+else:
+    hadoop_ip_list = getNewIPs()
+print "\nhadoop ips: "
 print hadoop_ip_list
 
 
-#  put those ips in the hadoop_home/conf/slaves file
-print "generating slaves file from hadoop instances' ips"
+
+#  generate /etc/hosts and hadoop/conf/slaves files
+
+print "\ngenerating slaves file from hadoop instances' ips"
+hadoop_instance_number = 1
 for ip in hadoop_ip_list:
-    ip_cat_cmd = "echo '" + ip + "' >> " + hadoop_home + "/conf/slaves"
-    ip_cat_proc = subprocWrapper(ip_cat_cmd)
-    printOutput(ip_cat_proc)
+    hostname = "hadoop" + str(hadoop_instance_number)
+    print "adding: \"" + ip + " " + hostname + "\" to hosts"
+    hosts_echo_cmd = "echo '" + ip + " " + hostname + "' >> " + hosts_working_temp_dir + "/hosts"
+    hosts_echo_proc = subprocWrapper(hosts_echo_cmd)
+    printOutput(hosts_echo_proc)
 
-print "hadoop instances:"
-for instance in hadoop_instance_list:
-    print instance
+    print "adding: \"" + hostname + "\" to conf/slaves"
+    slaves_echo_cmd = "echo '" + hostname + "' >> " + hadoop_home + "/conf/slaves"
+    slaves_echo_proc = subprocWrapper(slaves_echo_cmd)
+    printOutput(slaves_echo_proc)
 
-print "global instances:"
-for instance in global_instance_list:
-    print instance
 
-for instance in hadoop_instance_list:
-    print "killing instance: ", instance
-    instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
-    printOutput(instance_kill_proc)
-'''
 #  copy slaves file to the instances
 for ip in ip_list:
     print "copying slaves file to: ", ip
@@ -167,6 +190,27 @@ for ip in ip_list:
     scp_slave_proc = subprocWrapper(scp_slave_cmd)
     printOutput(scp_slave_proc)
 
+
+# dump useful information and clean up
+print "\ninstance dump:"
+print "\nhadoop instances:"
+for instance in hadoop_instance_list:
+    print instance
+
+print "\nglobal instances:"
+for instance in global_instance_list:
+    print instance
+
+print "\ncleaning up: killing instances"
+for instance in hadoop_instance_list:
+    print "killing instance: ", instance
+if run_without_eucalyptus:
+    print "debug mode, killed instance: ", instance
+else:
+    instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
+    printOutput(instance_kill_proc)
+
+'''
 #set up hadoop
 print "initializing hadoop"
 hadoopInit()
