@@ -12,7 +12,8 @@ hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 #even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
 
-vm_startup_timeout = 300 #(5 min)
+vm_startup_time = 300 #(5 min)
+hadoop_startup_time = 120 #(2min)
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
@@ -25,6 +26,7 @@ hadoop_ip_list = []
 
 global_instance_list = []
 
+hostname_dict = {}
 
 def isIP(potential_ip):
     if None == ip_re.search(potential_ip):
@@ -165,11 +167,9 @@ printOutput(clear_temp_hosts_proc)
 
 
 
-
 #for sanity, check (and track) what if any instances are running on startup
 
 global_instance_list = getAllInstanceIds()
-
 
 
 
@@ -199,11 +199,16 @@ global_instance_list.extend(hadoop_instance_list)
 
 
 
-#collect ips for vm_startup_timeout time
 
-#  first, sleep for that length
-print "\nallowing vms ", vm_startup_timeout, " seconds to start"
-time.sleep(vm_startup_timeout)
+#collect ips for vm_startup_time time
+
+#  first, sleep 
+print "\nallowing vms ", vm_startup_time, " seconds to start"
+for count in range(10):
+    if not run_without_eucalyptus:
+        time.sleep(vm_startup_time/10)
+    print str((count + 1) * vm_startup_time/10), "seconds elapsed"
+
 
 
 
@@ -219,6 +224,7 @@ else:
     hadoop_ip_list = getIPs(hadoop_instance_list)
 print "\nhadoop ips: "
 print hadoop_ip_list
+
 
 
 
@@ -238,9 +244,11 @@ for ip in hadoop_ip_list:
     slaves_echo_proc = subprocWrapper(slaves_echo_cmd)
     printOutput(slaves_echo_proc)
     
+    hostname_dict[ip] = hostname
     hadoop_instance_number += 1
 
-#TODO cleanly integrate this with mosygs hosts file
+
+
 
 #print these files for sanity 
 
@@ -256,7 +264,24 @@ printOutput(cat_slaves_proc)
 
 
 
-#  copy hosts & slaves files to the instances
+
+# backup & generage  mosyg's hosts
+
+print "backing up mosyg's hosts"
+mosyg_backup_hosts_cmd = "cp /etc/hosts /etc/hosts.bak"
+mosyg_backup_hosts_proc = subprocWrapper(mosyg_backup_hosts_cmd)
+printOutput(mosyg_backup_hosts_proc)
+
+print "adding hadoop nodes to mosyg's hosts"
+mosyg_new_hosts_cmd = "cat " + hosts_working_temp_dir + "/hosts >> /etc/hosts"
+mosyg_new_hosts_proc = subprocWrapper(mosyg_new_hosts_cmd)
+printOutput(mosyg_new_hosts_proc)
+
+
+
+
+# copy hosts & slaves files to the instances
+#ALSO tell them their hostname 
 
 print "\ncopying hosts and slaves files to instances"
 for ip in hadoop_ip_list:
@@ -267,6 +292,13 @@ for ip in hadoop_ip_list:
     else:
         scp_hosts_proc = subprocWrapper(scp_hosts_cmd)
         printOutput(scp_hosts_proc)
+    print "setting hostname for: ", ip
+    scp_hostname_cmd = "ssh " + ip + " echo '" + hostname_dict[ip] + "' /etc/hostname"
+    if run_without_eucalyptus:
+        print "debug mode, running: " + scp_hostname_cmd
+    else:
+        scp_hostname_proc = subprocWrapper(scp_hostname_cmd)
+        printOutput(scp_hostname_proc)
     print "copying slaves file to: ", ip
     scp_slave_cmd = "scp " + hadoop_home + "/conf/slaves " + ip + ":" + hadoop_home + "/conf/slaves"
     if run_without_eucalyptus:
@@ -277,24 +309,45 @@ for ip in hadoop_ip_list:
 
 
 
-#set up hadoop
-print "initializing hadoop"
+# set up hadoop
+    
+print "\ninitializing hadoop"
 hadoopInit()
 
-'''
-#launch hadoop job
+
+
+
+# give hadoop time to set up
+
+print "\nallowing hadoop ", hadoop_startup_time, " seconds to start"
+for count in range(10):
+    if not run_without_eucalyptus:
+        time.sleep(hadoop_startup_time/10)
+    print str((count + 1) * hadoop_startup_time/10), "seconds elapsed"
+
+
+
+
+# launch hadoop job
+
 hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
-print "running hadoop job, with command: ", hadoop_randomwriter_job_string
-hadoop_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
-printOutput(hadoop_job_proc)
+print "\nrunning hadoop job, with command: ", hadoop_randomwriter_job_string
+if run_without_eucalyptus:
+    "debug mode, running hadoop"
+else:
+    hadoop_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
+    printOutput(hadoop_job_proc)
 
 
-
+'''
 #after second_job_start_time has elapsed, start second job
 
 
 #after third_job_start_time has elapsed, start third job
 '''
+
+
+
 
 # dump useful information and clean up
 
@@ -307,6 +360,8 @@ print "\nglobal instances:"
 for instance in global_instance_list:
     print instance
 
+temp = raw_input("press enter to terminate instances & restore mosyg's hosts file\n")
+
 print "\ncleaning up: killing instances"
 for instance in hadoop_instance_list:
     print "killing instance: ", instance
@@ -316,3 +371,12 @@ for instance in hadoop_instance_list:
         instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
         printOutput(instance_kill_proc)
 
+
+    
+
+# restore  mosyg's hosts
+
+print "restoring mosyg's hosts"
+mosyg_rest_hosts_cmd = "cp /etc/hosts.bak /etc/hosts"
+mosyg_rest_hosts_proc = subprocWrapper(mosyg_rest_hosts_cmd)
+printOutput(mosyg_rest_hosts_proc)
