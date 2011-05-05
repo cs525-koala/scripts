@@ -1,8 +1,12 @@
 #!/bin/sh
 
-# Run this after ctrl-C'ing start_evaluation.py 
+# Run this after ctrl-C'ing start_evaluation.py
+
+# Where am I?
+DIR=$(dirname $(readlink -f $0))
+
+# Restore the hosts file
 cp /etc/hosts.bak /etc/hosts
 
-python `which euca-describe-instances` |grep -o "i-[a-fA-F0-9]*"|xargs -n1 python `which euca-terminate-instances`
-
-
+# Kill all instances
+$DIR/terminate_all.sh
