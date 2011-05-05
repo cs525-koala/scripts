@@ -6,6 +6,6 @@
 HOSTS="cn71 cn72 cn73 cn74"
 for i in $HOSTS;
 do
-  (ssh root@$i virsh list) | grep -v "Not running" | grep -v "\-\-\-" | grep -v "Id Name" |grep -v "^$" | awk "{printf \"($i): %s\n\", \$0}"
+  (ssh root@$i virsh -r list) | grep -v "Not running" | grep -v "\-\-\-" | grep -v "Id Name" |grep -v "^$" | awk "{printf \"($i): %s\n\", \$0}"
 done
 
