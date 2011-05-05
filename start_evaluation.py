@@ -2,7 +2,7 @@
 
 #It is assumed that this script is run only on mosyg and only as root
 
-import sys, re, time, subprocess
+import sys, re, time, subprocess, ping, socket
 
 run_without_eucalyptus = False
 
@@ -12,8 +12,7 @@ hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 #even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
 
-vm_startup_time = 300 #(5 min)
-hadoop_startup_time = 120 #(2min)
+hadoop_startup_time = 300 #(5min)
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
@@ -27,6 +26,18 @@ hadoop_ip_list = []
 global_instance_list = []
 
 hostname_dict = {}
+
+def isPingable(address):
+    try:
+        delay = ping.do_one(address, timeout=1)
+    except socket.error, e:
+        print address, "not up"
+        return False
+    if delay > 0:
+        return True
+    else:
+        print address, "not up"
+        return False
 
 def isIP(potential_ip):
     if None == ip_re.search(potential_ip):
@@ -149,6 +160,23 @@ def hadoopInit():
         hadoop_start_proc = subprocWrapper(hadoop_start_cmd)
         printOutput(hadoop_start_proc)
 
+def wait_for_vms(ip_list, vm_instance_number):
+    if not run_without_eucalyptus:
+        print "\nallowing vms 30 seconds to start"
+        time.sleep(30)
+        vms_ready = False
+        while(not vms_ready):
+            vm_ready_count = 0
+            for ip in ip_list:
+                if isPingable(ip):
+                    vm_ready_count += 1
+            if vm_ready_count == vm_instance_number:
+                print "vms ready"
+                vms_ready = True
+            else:
+                print "vms not ready, sleeping another 30 seconds"
+                time.sleep(30)
+
 
 
 #MAIN EXECUTION
@@ -200,18 +228,6 @@ global_instance_list.extend(hadoop_instance_list)
 
 
 
-#collect ips for vm_startup_time time
-
-#  first, sleep 
-print "\nallowing vms ", vm_startup_time, " seconds to start"
-for count in range(10):
-    if not run_without_eucalyptus:
-        time.sleep(vm_startup_time/10)
-    print str((count + 1) * vm_startup_time/10), "seconds elapsed"
-
-
-
-
 #  parse euca-describe-instances for new ips
 
 print "\ngetting slave ips from euca-describe-instances"
@@ -224,6 +240,14 @@ else:
     hadoop_ip_list = getIPs(hadoop_instance_list)
 print "\nhadoop ips: "
 print hadoop_ip_list
+
+
+
+
+#wait for vms to start
+
+#  first, sleep 
+wait_for_vms(hadoop_ip_list, hadoop_instance_count)
 
 
 
@@ -293,7 +317,7 @@ for ip in hadoop_ip_list:
         scp_hosts_proc = subprocWrapper(scp_hosts_cmd)
         printOutput(scp_hosts_proc)
     print "setting hostname for: ", ip
-    scp_hostname_cmd = "ssh " + ip + " echo '" + hostname_dict[ip] + "' /etc/hostname"
+    scp_hostname_cmd = "ssh " + ip + " hostname " + hostname_dict[ip]
     if run_without_eucalyptus:
         print "debug mode, running: " + scp_hostname_cmd
     else:
@@ -330,13 +354,25 @@ for count in range(10):
 
 # launch hadoop job
 
+#random
 hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
 print "\nrunning hadoop job, with command: ", hadoop_randomwriter_job_string
 if run_without_eucalyptus:
     "debug mode, running hadoop"
 else:
-    hadoop_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
-    printOutput(hadoop_job_proc)
+    hadoop_rand_job_proc = subprocWrapper(hadoop_randomwriter_job_string)
+    printOutput(hadoop_rand_job_proc)
+
+#sort
+hadoop_sort_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar sort random_data sorted_data"
+print "\nrunning hadoop job, with command: ", hadoop_sort_job_string
+if run_without_eucalyptus:
+    "debug mode, running hadoop"
+else:
+    hadoop_sort_job_proc = subprocWrapper(hadoop_sort_job_string)
+    printOutput(hadoop_sort_job_proc)
+
+
 
 
 '''
