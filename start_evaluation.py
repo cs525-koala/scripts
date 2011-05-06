@@ -4,7 +4,7 @@
 
 import sys, re, time, subprocess, ping, socket
 
-run_without_eucalyptus = False
+run_without_eucalyptus = True
 
 hadoop_home = "/usr/lib/hadoop"
 hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
@@ -12,7 +12,7 @@ hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 #even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
 
-hadoop_startup_time = 300 #(5min)
+hadoop_startup_time = 20 #(1/3min)
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
@@ -165,6 +165,7 @@ def wait_for_vms(ip_list, vm_instance_number):
         print "\nallowing vms 30 seconds to start"
         time.sleep(30)
         vms_ready = False
+        loop_count = 0
         while(not vms_ready):
             vm_ready_count = 0
             for ip in ip_list:
@@ -174,7 +175,8 @@ def wait_for_vms(ip_list, vm_instance_number):
                 print "vms ready"
                 vms_ready = True
             else:
-                print "vms not ready, sleeping another 30 seconds"
+                loop_count += 1
+                print "after " + str(loop_count * 30) + " seconds, vms not ready, sleeping another 30 seconds"
                 time.sleep(30)
 
 
@@ -230,6 +232,12 @@ global_instance_list.extend(hadoop_instance_list)
 
 #  parse euca-describe-instances for new ips
 
+#first sleep
+print "\ngiving koala 10 sec to start instances"
+if not run_without_eucalyptus:
+    time.sleep(10)
+
+#scrape describe instances
 print "\ngetting slave ips from euca-describe-instances"
 if run_without_eucalyptus:
     print "debug mode, using fake ips"
@@ -310,21 +318,21 @@ printOutput(mosyg_new_hosts_proc)
 print "\ncopying hosts and slaves files to instances"
 for ip in hadoop_ip_list:
     print "\ncopying hosts file to: ", ip
-    scp_hosts_cmd = "scp " + hosts_working_temp_dir + "/hosts " + ip + ":" + "/etc/hosts"
+    scp_hosts_cmd = "scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + hosts_working_temp_dir + "/hosts " + ip + ":" + "/etc/hosts"
     if run_without_eucalyptus:
         print "debug mode, running: " + scp_hosts_cmd
     else:
         scp_hosts_proc = subprocWrapper(scp_hosts_cmd)
         printOutput(scp_hosts_proc)
     print "setting hostname for: ", ip
-    scp_hostname_cmd = "ssh " + ip + " hostname " + hostname_dict[ip]
+    scp_hostname_cmd = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + ip + " hostname " + hostname_dict[ip]
     if run_without_eucalyptus:
         print "debug mode, running: " + scp_hostname_cmd
     else:
         scp_hostname_proc = subprocWrapper(scp_hostname_cmd)
         printOutput(scp_hostname_proc)
     print "copying slaves file to: ", ip
-    scp_slave_cmd = "scp " + hadoop_home + "/conf/slaves " + ip + ":" + hadoop_home + "/conf/slaves"
+    scp_slave_cmd = "scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + hadoop_home + "/conf/slaves " + ip + ":" + hadoop_home + "/conf/slaves"
     if run_without_eucalyptus:
         print "debug mode, running: " + scp_slave_cmd
     else:
@@ -342,6 +350,8 @@ hadoopInit()
 
 
 # give hadoop time to set up
+
+temp = raw_input("\npress enter when nodes are ready\n")
 
 print "\nallowing hadoop ", hadoop_startup_time, " seconds to start"
 for count in range(10):
@@ -396,7 +406,7 @@ print "\nglobal instances:"
 for instance in global_instance_list:
     print instance
 
-temp = raw_input("press enter to terminate instances & restore mosyg's hosts file\n")
+temp = raw_input("\npress enter to terminate instances & restore mosyg's hosts file\n")
 
 print "\ncleaning up: killing instances"
 for instance in hadoop_instance_list:
