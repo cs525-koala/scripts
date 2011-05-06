@@ -4,7 +4,7 @@
 
 import sys, re, time, subprocess, ping, socket
 
-run_without_eucalyptus = False
+run_without_eucalyptus = True
 
 hadoop_home = "/usr/lib/hadoop"
 hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
@@ -24,6 +24,7 @@ hadoop_instance_list = []
 hadoop_ip_list = []
 
 global_instance_list = []
+global_ip_list = [] #idk why, might as well track it
 
 hostname_dict = {}
 
@@ -225,6 +226,41 @@ def wait_for_dfs_nodes(number):
     else:
         print "debug mode: nodes are ready"
 
+def start_instances(instance_count, instance_type="c1.medium"):
+    instance_list = []
+    instance_start_cmd = "euca-run-instances -n " + str(instance_count)+ " " + vm_emi + " -t " + instance_type
+    if run_without_eucalyptus:
+        print "debug mode, would run: ", instance_start_cmd
+        print "adding fake instance ids to instance lists"
+        for instance_number in range(instance_count):
+            instance_list.append(instance_type + "_instance_" + str(instance_number))
+    else:
+        print "running: ", instance_start_cmd
+        start_proc = subprocWrapper(instance_start_cmd)
+        instance_list = getInstanceIds(start_proc)
+    return instance_list
+
+def getInstanceIPs(instance_list):
+    #first sleep
+    print "\ngiving koala 10 sec to start instances"
+    if not run_without_eucalyptus:
+        time.sleep(10)
+
+    #scrape describe instances
+    ip_list = []
+    print "\ngetting ips from euca-describe-instances"
+    if run_without_eucalyptus:
+        print "debug mode, using fake ips"
+        for instance_number in range(len(instance_list)):
+            print "debug mode, adding ip: 1.1.1." + str(instance_number)
+            ip_list.append("1.1.1." + str(instance_number))
+    else:
+        ip_list = getIPs(instance_list)
+        print "\n ips: "
+        print ip_list
+    return ip_list
+
+
 #MAIN EXECUTION
 
 
@@ -267,18 +303,11 @@ print "\nstarting eval: ", start_time
 
 #start hadoop vm's & record instance ids 
 
-print "starting ", hadoop_instance_count, " hadoop VMs"
-hadoop_instance_start_cmd = "euca-run-instances -n " + str(hadoop_instance_count)+ " " + vm_emi + " -t c1.medium"
-if run_without_eucalyptus:
-    #DEBUG MODE 
-    print "debug mode, would run: ", hadoop_instance_start_cmd
-    print "adding fake instance ids to instance lists"
-    for instance_number in range(hadoop_instance_count):
-        hadoop_instance_list.append("hadoop_instance_" + str(instance_number))
-else:
-    print "running: ", hadoop_instance_start_cmd
-    hadoop_start_proc = subprocWrapper(hadoop_instance_start_cmd)
-    hadoop_instance_list = getInstanceIds(hadoop_start_proc)
+print "\nstarting ", hadoop_instance_count, " hadoop VMs"
+hadoop_instance_list = start_instances(hadoop_instance_count)
+if not len(hadoop_instance_list) == hadoop_instance_count:
+    print "error, only", len(hadoop_instance_list), "of", hadoop_instance_count, "instances started, quitting"
+    sys.exit(-1)
 global_instance_list.extend(hadoop_instance_list)
 
 
@@ -286,22 +315,12 @@ global_instance_list.extend(hadoop_instance_list)
 
 #  parse euca-describe-instances for new ips
 
-#first sleep
-print "\ngiving koala 10 sec to start instances"
-if not run_without_eucalyptus:
-    time.sleep(10)
-
-#scrape describe instances
-print "\ngetting slave ips from euca-describe-instances"
-if run_without_eucalyptus:
-    print "debug mode, using fake ips"
-    for instance_number in range(hadoop_instance_count):
-        print "debug mode, adding ip: 1.1.1." + str(instance_number)
-        hadoop_ip_list.append("1.1.1." + str(instance_number))
-else:
-    hadoop_ip_list = getIPs(hadoop_instance_list)
-print "\nhadoop ips: "
-print hadoop_ip_list
+print "\ngetting hadoop_ips"
+hadoop_ip_list = getInstanceIPs(hadoop_instance_list)
+if not len(hadoop_instance_list) == len(hadoop_ip_list):
+    print "error, only", len(hadoop_ip_list), "of", len(hadoop_instance_list), "instances started, quitting"
+    sys.exit(-1)
+global_ip_list.extend(hadoop_ip_list)
 
 
 
