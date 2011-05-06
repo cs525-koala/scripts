@@ -4,24 +4,33 @@
 
 import sys, re, time, subprocess, ping, socket
 
-run_without_eucalyptus = True
+run_without_eucalyptus = False
 
 hadoop_home = "/usr/lib/hadoop"
 hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
 
-#even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
+# even though it is incorrect, we will accept numbers 256-999 for the sake of simplicity
 ip_re = re.compile("(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})")
 dfs_re = re.compile("Datanodes available: (\d+) [(]\d+ total, \d+ dead[)]")
 
+# currently unused
+# TODO fix this
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
 vm_emi = "emi-DBEE158C"
 
 hadoop_instance_count = 8
-#"instance" refers to a unique instance id representing the instance
-hadoop_instance_list = [] 
+hadoop_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
 hadoop_ip_list = []
+
+disk_instance_count = 8
+disk_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
+disk_ip_list = []
+
+cpu_instance_count = 8
+cpu_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
+cpu_ip_list = []
 
 global_instance_list = []
 global_ip_list = [] #idk why, might as well track it
@@ -99,7 +108,7 @@ def getIPs(instance_list):
         print "error: ", line
     return new_ip_list
 
-#must be called on the output of a subprocess.Popen of euca-run-instances
+# must be called on the output of a subprocess.Popen of euca-run-instances
 def getInstanceIds(proc):
     (proc_stdout, proc_stderr) = (proc.stdout, proc.stderr)
     new_instance_list = []
@@ -170,8 +179,8 @@ def fix_mosyg_hosts():
         mosyg_rest_hosts_proc = subprocWrapper(mosyg_rest_hosts_cmd)
         printOutput(mosyg_rest_hosts_proc)
 
-def kill_instances(instance_list):
-    print "\ncleaning up: killing instances"
+def kill_instances(instance_list, instance_type):
+    print "\ncleaning up: killing " + instance_type + " instances"
     for instance in instance_list:
         print "killing instance: ", instance
         if run_without_eucalyptus:
@@ -180,23 +189,23 @@ def kill_instances(instance_list):
             instance_kill_proc = subprocWrapper("euca-terminate-instances " + instance)
             printOutput(instance_kill_proc)
 
-def wait_for_vms(ip_list, vm_instance_number):
+def wait_for_instances(ip_list, instance_number):
     if not run_without_eucalyptus:
-        print "\nallowing vms 30 seconds to start"
+        print "\nallowing instances 30 seconds to start"
         time.sleep(30)
-        vms_ready = False
+        instances_ready = False
         loop_count = 0
-        while(not vms_ready):
-            vm_ready_count = 0
+        while(not instances_ready):
+            instance_ready_count = 0
             for ip in ip_list:
                 if isPingable(ip):
-                    vm_ready_count += 1
-            if vm_ready_count == vm_instance_number:
-                print "vms ready"
-                vms_ready = True
+                    instance_ready_count += 1
+            if instance_ready_count == instance_number:
+                print "instances ready"
+                instances_ready = True
             else:
                 loop_count += 1
-                print "after " + str(loop_count * 30) + " seconds, vms not ready, sleeping another 30 seconds"
+                print "after " + str(loop_count * 30) + " seconds, instances not ready, sleeping another 30 seconds"
                 time.sleep(30)
 
 def wait_for_dfs_nodes(number):
@@ -261,11 +270,11 @@ def getInstanceIPs(instance_list):
     return ip_list
 
 
-#MAIN EXECUTION
+# MAIN EXECUTION
 
 
 
-#get time
+# get time
 
 script_start_time = prettyTime()
 print "\nscript starting: ", script_start_time
@@ -273,7 +282,7 @@ print "\nscript starting: ", script_start_time
 
 
 
-#clear old slaves file & temp hosts file
+# clear old slaves file & temp hosts file
 
 clear_slaves_cmd = "echo -n '' > " + hadoop_home + "/conf/slaves"
 clear_slaves_proc = subprocWrapper(clear_slaves_cmd)
@@ -286,14 +295,14 @@ printOutput(clear_temp_hosts_proc)
 
 
 
-#for sanity, check (and track) what if any instances are running on startup
+# for sanity, check (and track) what if any instances are running on startup
 
 global_instance_list = getAllInstanceIds()
 
 
 
 
-#get time
+# get time
 
 start_time = prettyTime()
 print "\nstarting eval: ", start_time
@@ -301,42 +310,43 @@ print "\nstarting eval: ", start_time
 
 
 
-#start hadoop vm's & record instance ids 
+# start hadoop instances & record instance ids 
 
-print "\nstarting ", hadoop_instance_count, " hadoop VMs"
-hadoop_instance_list = start_instances(hadoop_instance_count)
+print "\nstarting ", hadoop_instance_count, " hadoop instances"
+hadoop_instance_list = start_instances(hadoop_instance_count, "hadoop")
 if not len(hadoop_instance_list) == hadoop_instance_count:
-    print "error, only", len(hadoop_instance_list), "of", hadoop_instance_count, "instances started, quitting"
+    print "error, only", len(hadoop_instance_list), "of", hadoop_instance_count, "hadoop instances started, quitting"
     sys.exit(-1)
 global_instance_list.extend(hadoop_instance_list)
 
 
 
 
-#  parse euca-describe-instances for new ips
+#  parse euca-describe-instances for hadoop ips
 
 print "\ngetting hadoop_ips"
 hadoop_ip_list = getInstanceIPs(hadoop_instance_list)
 if not len(hadoop_instance_list) == len(hadoop_ip_list):
-    print "error, only", len(hadoop_ip_list), "of", len(hadoop_instance_list), "instances started, quitting"
+    print "error, only", len(hadoop_ip_list), "of", len(hadoop_instance_list), "hadoop ips found, quitting"
     sys.exit(-1)
 global_ip_list.extend(hadoop_ip_list)
 
 
 
 
-#wait for vms to start
+# wait for hadoop instances to start
 
 #  first, sleep 
-wait_for_vms(hadoop_ip_list, hadoop_instance_count)
+print "waiting for", hadoop_instance_count, "hadoop instances to come up"
+wait_for_instances(hadoop_ip_list, hadoop_instance_count)
 
 
 
 
-#get time
+# get time
 
-vm_ready_time = prettyTime()
-print "\nvms ready: ", vm_ready_time
+hadoop_instance_ready_time = prettyTime()
+print "\nhadoop instances ready: ", hadoop_instance_ready_time
 
 
 
@@ -363,7 +373,7 @@ for ip in hadoop_ip_list:
 
 
 
-#print these files for sanity 
+# print these files for sanity 
 
 print "\n\n**************** HOSTS FILE *****************"
 cat_hosts_cmd = "cat " + hosts_working_temp_dir + "/hosts"
@@ -396,7 +406,7 @@ if not run_without_eucalyptus:
 
 
 # copy hosts & slaves files to the instances
-#ALSO tell them their hostname 
+# ALSO tell them their hostname 
 
 print "\ncopying hosts and slaves files to instances"
 for ip in hadoop_ip_list:
@@ -425,7 +435,7 @@ for ip in hadoop_ip_list:
 
 
 
-#get time
+# get time
 
 hosts_ready_time = prettyTime()
 print "\nhosts and slaves files for instances ready: ", hosts_ready_time
@@ -448,7 +458,7 @@ wait_for_dfs_nodes(hadoop_instance_count)
 
 
 
-#get time
+# get time
 
 hadoop_ready_time = prettyTime()
 print "\nhadoop ready: ", hadoop_ready_time
@@ -458,7 +468,7 @@ print "\nhadoop ready: ", hadoop_ready_time
 
 # launch hadoop jobs
 
-#random
+# random
 hadoop_randomwriter_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar randomwriter random_data"
 print "\nrunning hadoop job, with command: ", hadoop_randomwriter_job_string
 if run_without_eucalyptus:
@@ -470,7 +480,7 @@ else:
 
 
 
-#get time
+# get time
 
 randomwriter_done_time = prettyTime()
 print "\nrandomwriter done: ", randomwriter_done_time
@@ -478,7 +488,7 @@ print "\nrandomwriter done: ", randomwriter_done_time
 
 
 
-#sort
+# sort
 hadoop_sort_job_string = hadoop_home + "/bin/hadoop jar " + hadoop_home + "/hadoop-0.20.2-examples.jar sort random_data sorted_data"
 print "\nrunning hadoop job, with command: ", hadoop_sort_job_string
 if run_without_eucalyptus:
@@ -490,7 +500,7 @@ else:
 
 
 
-#get time
+# get time
 
 sort_done_time = prettyTime()
 print "\nsort done: ", sort_done_time
@@ -498,12 +508,93 @@ print "\nsort done: ", sort_done_time
 
 
 
-'''
-#after second_job_start_time has elapsed, start second job
+# TODO after second_job_start_time has elapsed, start second job
+# -this currently will start after hadoop due to waiting on stdout/err pipes 
+# -we can discuss the best way to do output/logging later 
+
+# start disk instances & record instance ids 
+
+print "\nstarting ", disk_instance_count, " disk benchmark instances"
+disk_instance_list = start_instances(disk_instance_count, "disk")
+if not len(disk_instance_list) == disk_instance_count:
+    print "error, only", len(disk_instance_list), "of", disk_instance_count, "disk benchmark instances started, quitting"
+    sys.exit(-1)
+global_instance_list.extend(disk_instance_list)
 
 
-#after third_job_start_time has elapsed, start third job
-'''
+
+
+#  parse euca-describe-instances for disk ips
+
+print "\ngetting disk benchmark instance ips"
+disk_ip_list = getInstanceIPs(disk_instance_list)
+if not len(disk_instance_list) == len(disk_ip_list):
+    print "error, only", len(disk_ip_list), "of", len(disk_instance_list), "disk benchmark instance ips found, quitting"
+    sys.exit(-1)
+global_ip_list.extend(disk_ip_list)
+
+
+
+
+# wait for disk instances to start
+
+#  first, sleep 
+print "waiting for", disk_instance_count, "disk instances to come up"
+wait_for_instances(disk_ip_list, disk_instance_count)
+
+
+
+
+# get time
+
+disk_instance_ready_time = prettyTime()
+print "\ndisk benchmark instances ready: ", disk_instance_ready_time
+
+# TODO do something with these (lol)
+
+
+
+
+# TODO after third_job_start_time has elapsed, start third job (same as #2)
+
+# start cpu instances & record instance ids 
+
+print "\nstarting ", cpu_instance_count, " cpu benchmark instances"
+cpu_instance_list = start_instances(cpu_instance_count, "cpu")
+if not len(cpu_instance_list) == cpu_instance_count:
+    print "error, only", len(cpu_instance_list), "of", cpu_instance_count, "cpu benchmark instances started, quitting"
+    sys.exit(-1)
+global_instance_list.extend(cpu_instance_list)
+
+
+
+
+#  parse euca-describe-instances for cpu benchmark instance ips
+
+print "\ngetting cpu benchmark instance ips"
+cpu_ip_list = getInstanceIPs(cpu_instance_list)
+if not len(cpu_instance_list) == len(cpu_ip_list):
+    print "error, only", len(cpu_ip_list), "of", len(cpu_instance_list), "cpu benchmark instance ips found, quitting"
+    sys.exit(-1)
+global_ip_list.extend(cpu_ip_list)
+
+
+
+
+# wait for cpu instances to start
+
+#  first, sleep 
+print "waiting for", cpu_instance_count, "cpu instances to come up"
+wait_for_instances(cpu_ip_list, cpu_instance_count)
+
+
+
+
+# get time
+
+cpu_instance_ready_time = prettyTime()
+print "\ncpu benchmark instances ready: ", cpu_instance_ready_time
+
 
 
 
@@ -515,18 +606,25 @@ print "\nhadoop instances:"
 for instance in hadoop_instance_list:
     print instance
 
-print "\nglobal instances:"
-for instance in global_instance_list:
+print "\ndisk benchmark instances:"
+for instance in disk_instance_list:
     print instance
 
-#temp = raw_input("\npress enter to terminate instances & restore mosyg's hosts file\n")
+print "\ncpu benchmark instances:"
+for instance in cpu_instance_list:
+    print instance
 
-
+print "\nglobal instances not listed above:"
+for instance in global_instance_list:
+    if (not instance in hadoop_instance_list) and (not instance in disk_instance_list) and (not instance in cpu_instance_list):
+        print instance
 
 
 # cleanup: kill instances
 
-kill_instances(hadoop_instance_list)
+kill_instances(hadoop_instance_list, "hadoop")
+kill_instances(disk_instance_list, "disk")
+kill_instances(cpu_instance_list, "cpu")
 
 
     
@@ -537,7 +635,7 @@ fix_mosyg_hosts()
 
 
 
-#get time
+# get time
 
 eval_done_time = prettyTime()
 print "\neval done: ", eval_done_time
