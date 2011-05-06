@@ -235,14 +235,14 @@ def wait_for_dfs_nodes(number):
     else:
         print "debug mode: nodes are ready"
 
-def start_instances(instance_count, instance_type="c1.medium"):
+def start_instances(instance_count, instance_name, instance_type="c1.medium"):
     instance_list = []
     instance_start_cmd = "euca-run-instances -n " + str(instance_count)+ " " + vm_emi + " -t " + instance_type
     if run_without_eucalyptus:
         print "debug mode, would run: ", instance_start_cmd
         print "adding fake instance ids to instance lists"
         for instance_number in range(instance_count):
-            instance_list.append(instance_type + "_instance_" + str(instance_number))
+            instance_list.append(instance_name + "_instance_" + str(instance_number))
     else:
         print "running: ", instance_start_cmd
         start_proc = subprocWrapper(instance_start_cmd)
