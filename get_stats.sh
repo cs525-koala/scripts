@@ -2,7 +2,7 @@
 
 # Grab the stats from the various machines
 
-UPDATE_PERIOD=0
+UPDATE_PERIOD=5
 
 NCS="172.22.28.81 172.22.28.82 172.22.28.83"
 
@@ -14,7 +14,7 @@ LOG=/tmp/get_stats.log
 ERRLOG=$LOG.err
 
 echo "Writing stdout to $LOG and stderr to $ERRLOG..."
-#exec > $LOG 2> $ERRLOG
+exec 2> $ERRLOG | tee $LOG
 
 function statfromhost() {
     HOST=$1
