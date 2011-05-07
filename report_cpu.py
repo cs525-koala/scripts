@@ -35,7 +35,7 @@ while True: #yup, only way out is kill
     if len(cpu_utilization_list) > 60:
         cpu_utilization_list.pop(0)
     print "appending", ps_cpu_sum/cpu_count
-    cpu_utilization_list.append(ps_cpu_sum/8)
+    cpu_utilization_list.append(ps_cpu_sum/cpu_count)
 
     total_sum = 0.0
     for cpu_sum in cpu_utilization_list:

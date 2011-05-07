@@ -235,7 +235,7 @@ def wait_for_dfs_nodes(number):
     else:
         print "debug mode: nodes are ready"
 
-def start_instances(instance_count, instance_name, instance_type="c1.medium"):
+def start_instances(instance_count, instance_name, instance_type="m1.xlarge"):
     instance_list = []
     instance_start_cmd = "euca-run-instances -n " + str(instance_count)+ " " + vm_emi + " -t " + instance_type
     if run_without_eucalyptus:
