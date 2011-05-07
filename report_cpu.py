@@ -29,12 +29,12 @@ while True: #yup, only way out is kill
             ps_cpu_sum += float(words[0])
     if len(cpu_utilization_list) > 60:
         cpu_utilization_list.pop(0)
-    cpu_utilization_list.append(ps_cpu_sum)
+    cpu_utilization_list.append(ps_cpu_sum/8)
 
     total_sum = 0.0
     for cpu_sum in cpu_utilization_list:
         total_sum += cpu_sum
-    avg_sum = total_sum/8
+    avg_sum = total_sum/len(cpu_utilization_list)
 
     proc = subprocWrapper("echo '" + str(int(avg_sum)) + "' > /tmp/stats")
     printOutput(proc)
