@@ -44,11 +44,10 @@ do
         IP=$(getipforinst $i)
         STAT=$(statfromhost $IP)
 
-        echo Got $STAT for $i...
-        echo test$STAT |grep "^test[.0-9]\+$"
+        echo Got $STAT for $i... $(date)
+        echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
           echo "$i $STAT" >> $TMP
-          echo $STAT
           let count=count+1
         fi
     done
