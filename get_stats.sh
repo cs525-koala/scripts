@@ -2,7 +2,7 @@
 
 # Grab the stats from the various machines
 
-UPDATE_PERIOD=1
+UPDATE_PERIOD=0
 
 NCS="172.22.28.81 172.22.28.82 172.22.28.83"
 
@@ -18,7 +18,7 @@ echo "Writing stdout to $LOG and stderr to $ERRLOG..."
 
 function statfromhost() {
     HOST=$1
-    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=5"
+    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=10"
     RESULT=$($SSH root@$HOST "cat $STATFILE")
 
     echo $RESULT
@@ -45,27 +45,30 @@ do
     for i in $INSTIDS;
     do
         IP=$(getipforinst $i)
-        echo "Getting info for $i...($IP)"
+        echo -n "Getting info for $i ($IP)..."
         STAT=$(statfromhost $IP)
 
         echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
+          echo $STAT
           echo "$i $STAT" >> $TMP
         else
-          echo "Error getting info for $i ($IP)"
+          echo "Error!"
         fi
         let count=count+1
     done
 
     for n in $NCS;
     do
-        echo "Getting info for $n..."
+        echo -n "Getting info for $n..."
         STAT=$(statfromhost $n)
 
-        echo Got $STAT for $n...
-        echo test$STAT |grep "^test[.0-9]\+$"
+        echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
+          echo $STAT
           echo "$n $STAT" >> $TMP
+        else
+          echo "Error!"
         fi
         let count=count+1
     done
