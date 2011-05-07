@@ -4,7 +4,7 @@
 
 UPDATE_PERIOD=1
 
-NCS="cn71 cn72 cn73"
+NCS="172.22.28.81 172.22.28.82 172.22.28.83"
 
 STATFILE=/tmp/stats
 OUTPUT=/tmp/monitor.config
@@ -14,7 +14,7 @@ LOG=/tmp/get_stats.log
 ERRLOG=$LOG.err
 
 echo "Writing stdout to $LOG and stderr to $ERRLOG..."
-exec > $LOG 2> $ERRLOG
+#exec > $LOG 2> $ERRLOG
 
 function statfromhost() {
     HOST=$1
@@ -26,7 +26,7 @@ function statfromhost() {
 
 function getipforinst() {
     INST=$1
-    IP=$(python $(which euca-describe-instances) | grep $INST | cut -f4)
+    IP=$(cat /tmp/desc | grep $INST | cut -f4)
 
     echo $IP
 }
@@ -34,35 +34,40 @@ function getipforinst() {
 while [ 1 ];
 do
     # Get list of running instances...
-    INSTIDS=$(python $(which euca-describe-instances) | grep i- | cut -f2)
+    python $(which euca-describe-instances) > /tmp/desc
+    INSTIDS=$(cat /tmp/desc | grep i- | cut -f2)
+    echo $INSTIDS
 
     # Clear out our temporary file
     echo -n > $TMP
 
     let count=0
+    echo Running.... $(date)
     for i in $INSTIDS;
     do
+        echo "Getting info for $i..."
         IP=$(getipforinst $i)
         STAT=$(statfromhost $IP)
 
-        echo Got $STAT for $i... $(date)
+        echo Got $STAT for $i \($IP\)...
         echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
           echo "$i $STAT" >> $TMP
-          let count=count+1
         fi
+        let count=count+1
     done
 
     for n in $NCS;
     do
+        echo "Getting info for $n..."
         STAT=$(statfromhost $n)
 
         echo Got $STAT for $n...
         echo test$STAT |grep "^test[.0-9]\+$"
         if [ "$?" -eq "0" ]; then
           echo "$n $STAT" >> $TMP
-          let count=count+1
         fi
+        let count=count+1
     done
 
     lines=$(wc -l $TMP | awk '{print $1}')
