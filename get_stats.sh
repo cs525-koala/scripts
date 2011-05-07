@@ -36,7 +36,6 @@ do
     # Get list of running instances...
     python $(which euca-describe-instances) > /tmp/desc
     INSTIDS=$(cat /tmp/desc | grep i- | cut -f2)
-    echo $INSTIDS
 
     # Clear out our temporary file
     echo -n > $TMP
@@ -45,8 +44,8 @@ do
     echo Running.... $(date)
     for i in $INSTIDS;
     do
-        echo "Getting info for $i..."
         IP=$(getipforinst $i)
+        echo "Getting info for $i...($IP)"
         STAT=$(statfromhost $IP)
 
         echo Got $STAT for $i \($IP\)...
