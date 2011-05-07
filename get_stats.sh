@@ -18,8 +18,8 @@ echo "Writing stdout to $LOG and stderr to $ERRLOG..."
 
 function statfromhost() {
     HOST=$1
-    #SSH="ssh -q -q -t -o BatchMode=yes"
-    RESULT=$(ssh root@$HOST "cat $STATFILE")
+    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=5"
+    RESULT=$($SSH root@$HOST "cat $STATFILE")
 
     echo $RESULT
 }
@@ -48,10 +48,11 @@ do
         echo "Getting info for $i...($IP)"
         STAT=$(statfromhost $IP)
 
-        echo Got $STAT for $i \($IP\)...
         echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
           echo "$i $STAT" >> $TMP
+        else
+          echo "Error getting info for $i ($IP)"
         fi
         let count=count+1
     done
