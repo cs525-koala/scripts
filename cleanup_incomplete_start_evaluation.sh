@@ -6,7 +6,7 @@
 DIR=$(dirname $(readlink -f $0))
 
 # Restore the hosts file
-cp /etc/hosts.bak /etc/hosts
+cp /etc/hosts.golden /etc/hosts
 
 # Kill all instances
 $DIR/terminate_all.sh
