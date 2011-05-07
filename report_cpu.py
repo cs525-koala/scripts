@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import time
 from time import sleep
@@ -14,15 +14,6 @@ def printOutput(proc):
     for line in proc_stderr:
         print "error: ", line
 
-
-blah = "ifconfig | grep -v vir | grep br0 -A1 | grep inet | sed 's/^.*addr:\([.0-9]*\).*$/\\1/'"
-print blah
-get_ip_proc = subprocWrapper(blah)
-(ip_stdout,ip_stderr) = (get_ip_proc.stdout,get_ip_proc.stderr)
-for line in ip_stdout:
-    machine_ip = line
-
-print machine_ip
 
 cpu_utilization_list = []
 
