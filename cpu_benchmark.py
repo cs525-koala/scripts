@@ -6,18 +6,18 @@ import sys, re, datetime, time, subprocess, ping, socket, threading
 
 run_without_eucalyptus = False
 
-start_time_multiplier = 5
+start_time_multiplier = 2
 # start time base, [instance number, duration (exponent)]
-# start time base are randomly generated ints between 0 and 18 (random ints between 1 and 20 minus 2, so it starts immediately)
-cpu_task_values = dict(((2, [1,24]),
-                        (15, [2,24]),
-                        (1, [3,24]),
-                        (6, [4,24]),
-                        (3, [5,24]),
-                        (0, [6,24]),
-                        (5, [7,24]),
-                        (11, [8,24]),
-                        (9, [9,24])))
+# start time base are randomly generated ints between 1 and 20
+cpu_task_values = dict(((4, [1,24]),
+                        (17, [2,24]),
+                        (3, [3,24]),
+                        (8, [4,24]),
+                        (5, [5,24]),
+                        (2, [6,24]),
+                        (7, [7,24]),
+                        (13, [8,24]),
+                        (11, [9,24])))
                         
 def prettyTime():
     return time.strftime('%x: %X', time.gmtime())
@@ -54,7 +54,7 @@ print "\nstarting evaluation: ", start_eval_time
 for start_time in cpu_task_values:
     #may need to ad an import for timer
     t = threading.Timer(start_time * start_time_multiplier , cpu_task, [cpu_task_values[start_time][0],cpu_task_values[start_time][1]])
-    print "spawning a cpu benchmark task on hadoop" + str(cpu_task_values[start_time][0])", which will begin in", start_time * start_time_multiplier, "seconds"
+    print "spawning a cpu benchmark task on hadoop" + str(cpu_task_values[start_time][0]) + ", which will begin in", start_time * start_time_multiplier, "seconds"
     t.start()
 
 
