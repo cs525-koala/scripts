@@ -4,7 +4,7 @@
 
 import sys, re, time, subprocess, ping, socket
 
-run_without_eucalyptus = False
+run_without_eucalyptus = True
 
 hadoop_home = "/usr/lib/hadoop"
 hosts_working_temp_dir = "/tmp" #need somewhere to make a temp hosts file
@@ -20,7 +20,7 @@ third_job_start_time = 3600 #(60 min)
 
 vm_emi = "emi-DBEE158C"
 
-hadoop_instance_count = 9
+hadoop_instance_count = 8
 hadoop_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
 hadoop_ip_list = []
 
@@ -36,6 +36,21 @@ global_instance_list = []
 global_ip_list = [] #idk why, might as well track it
 
 hostname_dict = {}
+
+# 1/10th of start time, [instance number, duration (exponent)]
+cpu_task_values = dict(((0, [4,23]),
+                        (1, [8,23]),
+                        (2, [3,23]),
+                        (3, [6,23]),
+                        (4, [0,23]),
+                        (5, [7,23]),
+                        (6, [1,23]),
+                        (7, [5,23]),
+                        (8, [2,23])))
+
+
+
+
 
 def prettyTime():
     return time.strftime('%x: %X', time.gmtime())
@@ -269,199 +284,27 @@ def getInstanceIPs(instance_list):
         print ip_list
     return ip_list
 
-
-
-
-
+def cpu_task(instance_number, exponent):
+    print "starting job with exponent", exponent, "on hadoop"+str(instance_number)
+    cpu_task_cmd = "ssh hadoop" + str(instance_number) + " echo '2^2^" + str(exponent) + "' | bc >/dev/null"
+    if run_without_eucalyptus:
+        print "debug mode, running: " + cpu_task_cmd
+    else:
+        cpu_task_proc = subprocWrapper(cpu_task_cmd)
+        printOutput(cpu_task_proc)
 
 # MAIN EXECUTION
 
-
-
-# get time
-
-script_start_time = prettyTime()
-print "\nscript starting: ", script_start_time
-
-
-
-
-# clear old slaves file & temp hosts file
-
-clear_slaves_cmd = "echo -n '' > " + hadoop_home + "/conf/slaves"
-clear_slaves_proc = subprocWrapper(clear_slaves_cmd)
-printOutput(clear_slaves_proc)
-
-clear_temp_hosts_cmd = "echo '128.174.241.209 mosyg' > " + hosts_working_temp_dir + "/hosts"
-clear_temp_hosts_proc = subprocWrapper(clear_temp_hosts_cmd)
-printOutput(clear_temp_hosts_proc)
-
-
-
-
-# for sanity, check (and track) what if any instances are running on startup
-
-global_instance_list = getAllInstanceIds()
-
-
-
+#
 
 # get time
 
-start_time = prettyTime()
-print "\nstarting eval: ", start_time
+start_eval_time = prettyTime()
+print "\nstarting evaluation: ", start_eval_time
+
+for start_time in cpu_task_values:
+    #may need to ad an import for timer
+    t = Timer(start_time * 10, cpu_task(task_values[0],task_values[1]))
+    t.start()
 
 
-
-
-# start hadoop instances & record instance ids 
-
-print "\nstarting ", hadoop_instance_count, " hadoop instances"
-hadoop_instance_list = start_instances(hadoop_instance_count, "hadoop")
-if not len(hadoop_instance_list) == hadoop_instance_count:
-    print "error, only", len(hadoop_instance_list), "of", hadoop_instance_count, "hadoop instances started, quitting"
-    sys.exit(-1)
-global_instance_list.extend(hadoop_instance_list)
-
-
-
-
-#  parse euca-describe-instances for hadoop ips
-
-print "\ngetting hadoop_ips"
-hadoop_ip_list = getInstanceIPs(hadoop_instance_list)
-if not len(hadoop_instance_list) == len(hadoop_ip_list):
-    print "error, only", len(hadoop_ip_list), "of", len(hadoop_instance_list), "hadoop ips found, quitting"
-    sys.exit(-1)
-global_ip_list.extend(hadoop_ip_list)
-
-
-
-
-# wait for hadoop instances to start
-
-#  first, sleep 
-print "waiting for", hadoop_instance_count, "hadoop instances to come up"
-wait_for_instances(hadoop_ip_list, hadoop_instance_count)
-
-
-
-
-# get time
-
-hadoop_instance_ready_time = prettyTime()
-print "\nhadoop instances ready: ", hadoop_instance_ready_time
-
-
-
-
-#  generate /etc/hosts and hadoop/conf/slaves files
-
-print "\ngenerating slaves file from hadoop instances' ips"
-hadoop_instance_number = 1
-for ip in hadoop_ip_list:
-    hostname = "hadoop" + str(hadoop_instance_number)
-    print "adding: \"" + ip + " " + hostname + "\" to hosts"
-    hosts_echo_cmd = "echo '" + ip + " " + hostname + "' >> " + hosts_working_temp_dir + "/hosts"
-    hosts_echo_proc = subprocWrapper(hosts_echo_cmd)
-    printOutput(hosts_echo_proc)
-
-    print "adding: \"" + hostname + "\" to conf/slaves"
-    slaves_echo_cmd = "echo '" + hostname + "' >> " + hadoop_home + "/conf/slaves"
-    slaves_echo_proc = subprocWrapper(slaves_echo_cmd)
-    printOutput(slaves_echo_proc)
-    
-    hostname_dict[ip] = hostname
-    hadoop_instance_number += 1
-
-
-
-
-# print these files for sanity 
-
-print "\n\n**************** HOSTS FILE *****************"
-cat_hosts_cmd = "cat " + hosts_working_temp_dir + "/hosts"
-cat_hosts_proc = subprocWrapper(cat_hosts_cmd)
-printOutput(cat_hosts_proc)
-
-print "\n\n**************** SLAVES FILE *****************"
-cat_slaves_cmd = "cat " + hadoop_home + "/conf/slaves"
-cat_slaves_proc = subprocWrapper(cat_slaves_cmd)
-printOutput(cat_slaves_proc)
-
-
-
-
-# backup & generage  mosyg's hosts
-
-print "backing up mosyg's hosts"
-mosyg_backup_hosts_cmd = "cp /etc/hosts /etc/hosts.bak"
-if not run_without_eucalyptus:
-    mosyg_backup_hosts_proc = subprocWrapper(mosyg_backup_hosts_cmd)
-    printOutput(mosyg_backup_hosts_proc)
-
-print "adding hadoop nodes to mosyg's hosts"
-mosyg_new_hosts_cmd = "cat " + hosts_working_temp_dir + "/hosts >> /etc/hosts"
-if not run_without_eucalyptus:
-    mosyg_new_hosts_proc = subprocWrapper(mosyg_new_hosts_cmd)
-    printOutput(mosyg_new_hosts_proc)
-
-
-
-
-# copy hosts & slaves files to the instances
-# ALSO tell them their hostname 
-
-print "\ncopying hosts and slaves files to instances"
-for ip in hadoop_ip_list:
-    print "\ncopying hosts file to: ", ip
-    scp_hosts_cmd = "scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + hosts_working_temp_dir + "/hosts " + ip + ":" + "/etc/hosts"
-    if run_without_eucalyptus:
-        print "debug mode, running: " + scp_hosts_cmd
-    else:
-        scp_hosts_proc = subprocWrapper(scp_hosts_cmd)
-        printOutput(scp_hosts_proc)
-    print "setting hostname for: ", ip
-    scp_hostname_cmd = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + ip + " hostname " + hostname_dict[ip]
-    if run_without_eucalyptus:
-        print "debug mode, running: " + scp_hostname_cmd
-    else:
-        scp_hostname_proc = subprocWrapper(scp_hostname_cmd)
-        printOutput(scp_hostname_proc)
-    print "copying slaves file to: ", ip
-    scp_slave_cmd = "scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " + hadoop_home + "/conf/slaves " + ip + ":" + hadoop_home + "/conf/slaves"
-    if run_without_eucalyptus:
-        print "debug mode, running: " + scp_slave_cmd
-    else:
-        scp_slave_proc = subprocWrapper(scp_slave_cmd)
-        printOutput(scp_slave_proc)
-
-
-
-
-# get time
-
-hosts_ready_time = prettyTime()
-print "\nhosts and slaves files for instances ready: ", hosts_ready_time
-
-
-
-
-# set up hadoop
-    
-print "\ninitializing hadoop"
-hadoopInit()
-
-
-
-
-# give hadoop time to set up
-wait_for_dfs_nodes(hadoop_instance_count)
-print hadoop_instance_count, "dfs nodes ready"
-
-
-
-# get time
-
-hadoop_ready_time = prettyTime()
-print "\nhadoop ready: ", hadoop_ready_time

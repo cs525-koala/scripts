@@ -444,24 +444,3 @@ for ip in hadoop_ip_list:
 hosts_ready_time = prettyTime()
 print "\nhosts and slaves files for instances ready: ", hosts_ready_time
 
-
-
-
-# set up hadoop
-    
-print "\ninitializing hadoop"
-hadoopInit()
-
-
-
-
-# give hadoop time to set up
-wait_for_dfs_nodes(hadoop_instance_count)
-print hadoop_instance_count, "dfs nodes ready"
-
-
-
-# get time
-
-hadoop_ready_time = prettyTime()
-print "\nhadoop ready: ", hadoop_ready_time
