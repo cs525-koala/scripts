@@ -16,8 +16,13 @@ def printOutput(proc):
 
 
 cpu_utilization_list = []
+cpu_count = 0
 
-cpu_count = 8 #TODO: replace with a scrape of /proc/cpuinfo
+cpu_count_proc = subprocWrapper("grep processor /proc/cpuinfo | wc -l")
+(count_stdout, count_stderr) = (cpu_count_proc.stdout, cpu_count_proc.stderr)
+for line in count_stdout:
+    cpu_count = int(line)
+
 
 while True: #yup, only way out is kill
     ps_proc = subprocWrapper("ps -axo pcpu,cmd")
@@ -29,6 +34,7 @@ while True: #yup, only way out is kill
             ps_cpu_sum += float(words[0])
     if len(cpu_utilization_list) > 60:
         cpu_utilization_list.pop(0)
+    print "appending", ps_cpu_sum/cpu_count
     cpu_utilization_list.append(ps_cpu_sum/8)
 
     total_sum = 0.0
@@ -37,6 +43,8 @@ while True: #yup, only way out is kill
     avg_sum = total_sum/len(cpu_utilization_list)
 
     proc = subprocWrapper("echo '" + str(int(avg_sum)) + "' > /tmp/stats")
+    print "avg sum", int(avg_sum)
     printOutput(proc)
     sleep(1)
+
 

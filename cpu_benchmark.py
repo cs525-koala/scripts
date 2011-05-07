@@ -6,7 +6,7 @@ import sys, re, datetime, time, subprocess, ping, socket, threading
 
 run_without_eucalyptus = False
 
-start_time_multiplier = 5
+start_time_multiplier = 10
 # start pos, [instance number, duration (exponent)]
 cpu_task_values = dict(((0, [1,23]),
                         (1, [2,23]),
