@@ -2,12 +2,12 @@
 
 # Grab the stats from the various machines
 
-UPDATE_PERIOD=10
+UPDATE_PERIOD=1
 
 NCS="cn71 cn72 cn73"
 
 STATFILE=/tmp/stats
-OUTPUT=/tmp/monitor.config.testing
+OUTPUT=/tmp/monitor.config
 TMP=$OUTPUT.tmp
 
 LOG=/tmp/get_stats.log
@@ -18,6 +18,7 @@ exec > $LOG 2> $ERRLOG
 
 function statfromhost() {
     HOST=$1
+    #SSH="ssh -q -q -t -o BatchMode=yes"
     RESULT=$(ssh root@$HOST "cat $STATFILE")
 
     echo $RESULT
