@@ -25,6 +25,9 @@ then
 fi
 UNIQ="eval-$1"
 
+RUNLOG=/tmp/$$.$UNIQ.log
+
+(
 echo "This run's uniq identifier is **$UNIQ**"
 
 # Comment this out to actually execute commands
@@ -108,6 +111,7 @@ function fix_instance_ordering() {
 
     # Wait until scheduler informs us that it's done...
     DONE=5
+    echo "Waiting until instances are scheduled appropriately..."
     while [ $DONE -eq 5 ]
     do
         sleep 5
@@ -153,7 +157,7 @@ sleep 5
 
 fix_instance_ordering
 
-exit 1
+enable_scheduler
 
 # Main loop
 # Run each iteration of the eval, copy over the output
@@ -177,12 +181,12 @@ do
     remoterun cn72 "$RAEPCMD" > /dev/null
     remoterun cn73 "$RAEPCMD" > /dev/null
 done
-
+) |& tee $RUNLOG
 # Bundle up the results for easier scp'ing later.
 #remoterunall $BUNDLECMD
 
 # Copy results and commit them.
-RES_DIR=/opt/results/eval-$UNIQ/
+RES_DIR=/opt/results/$UNIQ/
 mkdir -p $RES_DIR
 for i in `seq 1 $INSTCOUNT`
 do
@@ -190,7 +194,11 @@ do
     scp hadoop$i:"$RESULTS_FILE.$UNIQ*" $RES_DIR/$i/
 done
 
+# Copy our execution log
+cp $RUNLOG $RES_DIR/
+
 cd /opt/results
 git add $RES_DIR
-git commit -a -m "Automatic commit of eval-$UNIQ"
+git commit -a -m "Automatic commit of cpu_driver run \"$UNIQ\""
 git push origin master
+
