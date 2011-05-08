@@ -31,6 +31,18 @@ function getipforinst() {
     echo $IP
 }
 
+function threshold_stat_inst() {
+    STAT=$1
+    THRESHOLD=10
+
+    if [ "$STAT" -ge "$THRESHOLD" ];
+    then
+        STAT=100
+    fi
+
+    echo $STAT
+}
+
 while [ 1 ];
 do
     # Get list of running instances...
@@ -50,8 +62,9 @@ do
 
         echo test$STAT |grep "^test[.0-9]\+$" >& /dev/null
         if [ "$?" -eq "0" ]; then
-          echo $STAT
-          echo "$i $STAT" >> $TMP
+          STATNEW=$(threshold_stat_inst $STAT)
+          echo "$STAT ($STATNEW)"
+          echo "$i $STATNEW" >> $TMP
         else
           echo "Error!"
         fi
