@@ -165,9 +165,9 @@ sleep 5
 
 fix_instance_ordering
 
-#echo "Sleeping for 60 seconds to let the system settle..."
-#echo "(Performance stats, various euc caches, etc)"
-#sleep 60
+echo "Sleeping for 60 seconds to let the system settle..."
+echo "(Performance stats, various euc caches, etc)"
+sleep 60
 
 enable_scheduler
 
