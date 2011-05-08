@@ -107,12 +107,19 @@ function fix_instance_ordering() {
     enable_manual_scheduler
 
     # Wait until scheduler informs us that it's done...
-    DONE=0
-    while [ $DONE -eq 0 ]
+    DONE=5
+    while [ $DONE -eq 5 ]
     do
-        sleep 10
-        # TODO: Check some output from the scheduler...
+        sleep 5
+        DONE=$(cat /tmp/sched.config |head -n2|tail -n1)
+        if [[ "$DONE" != "5" && "$DONE" != "0" ]];
+        then
+            echo "Error setting instance ordering, bailing!"
+            exit 1
+        fi
     done
+
+    echo "Instance order set! :D"
 }
 
 # Main Execution
