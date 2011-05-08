@@ -7,7 +7,10 @@
 
 #TODO: Increase offset times in cpu_benchmark.py? (LATER!)
 
-ITERS=2
+
+ITERMIN=4
+ITERMAX=4
+ITERSTEP=1
 
 INSTCOUNT=15
 RESULTS_FILE=/opt/cpu_bench_times
@@ -174,7 +177,16 @@ enable_scheduler
 # Main loop
 # Run each iteration of the eval, copy over the output
 # And increase the number of raep processes on the nc's
-for ITER in `seq 1 $ITERS`
+
+# Start enough raep's for ITERMIN
+for ITER in `seq 2 $ITERMIN`
+do
+    echo "Running raep's on cn72 and cn73..."
+    remoterun cn72 "$RAEPCMD" > /dev/null
+    remoterun cn73 "$RAEPCMD" > /dev/null
+done
+
+for ITER in `seq $ITERMIN $ITERSTEP $ITERMAX`
 do
     echo "ITERATION $ITER..."
 
@@ -189,9 +201,13 @@ do
     # Copy results to file for this iteration...
     remoterunall "cp $RESULTS_FILE $RESULTS_FILE.$UNIQ.$ITER" > /dev/null
 
-    # Done! Now run another raeps...
-    remoterun cn72 "$RAEPCMD" > /dev/null
-    remoterun cn73 "$RAEPCMD" > /dev/null
+    # Done! Now run enough raep's to get to next iter
+    for UNUSED in `seq 1 $ITERSTEP`;
+    do
+        echo "Running raep's on cn72 and cn73..."
+        remoterun cn72 "$RAEPCMD" > /dev/null
+        remoterun cn73 "$RAEPCMD" > /dev/null
+    done
 done
 ) |& tee $RUNLOG
 # Bundle up the results for easier scp'ing later.
