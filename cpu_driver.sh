@@ -53,10 +53,25 @@ function remoterunall() {
 function getidforindex() {
     INDEX=$1
 
-    IP=$(grep hadoop$INDEX /etc/hosts | cut -d" " -f1)
+    IP=$(grep hadoop$INDEX$ /etc/hosts | cut -d" " -f1)
     INDEX_INST_ID=$(cat /tmp/desc_driver | grep $IP | cut -f2)
 
     echo $INDEX_INST_ID
+}
+
+function disable_scheduler() {
+    echo "Disabling the scheduler..."
+    echo -n "30\n0\n0" > /tmp/sched.config
+}
+
+function enable_scheduler() {
+    echo "Enabling the scheduler..."
+    echo -n "30\n4\n1" > /tmp/sched.config
+}
+
+function enable_manual_scheduler() {
+    echo "Enabling the MANUAL scheduler..."
+    echo -n "30\n5\n1" > /tmp/sched.config
 }
 
 function fix_instance_ordering() {
@@ -73,13 +88,8 @@ function fix_instance_ordering() {
 
     NCS="172.22.28.81 172.22.28.82 172.22.28.83"
 
-    # xD
-    # Try to migrate (1,5) to cn71, etc.
-    # Since we don't know where they are, we just start spamming
-    # migrate requests until we get what we want.
-    # Run this once for each instance to guarantee the end result is what we want.
-    for converge in `seq 1 $INSTCOUNT`
-    do
+    echo -n > /tmp/sched.manual
+
     for n in $NCS
     do
         for i in `seq 1 $NCCOUNT`
@@ -90,14 +100,18 @@ function fix_instance_ordering() {
             DEST=$n
 
             echo "Putting $INSTID ($CURINST) on $DEST..."
-            for nn in $NCS
-            do
-                SOURCE=$nn
-                echo "Attempting to migrate $INSTID from $SOURCE to $DEST"
-                /tmp/CCclient_full localhost:8774 migrateInstance $INSTID $SOURCE $DEST
-            done
+            echo "$INSTID $DEST" >> /tmp/sched.manual
         done
     done
+
+    enable_manual_scheduler
+
+    # Wait until scheduler informs us that it's done...
+    DONE=0
+    while [ $DONE -eq 0 ]
+    do
+        sleep 10
+        # TODO: Check some output from the scheduler...
     done
 }
 
@@ -127,6 +141,9 @@ remoterunall "./killgrep.sh cpu_task" > /dev/null
 remoterunall "./killgrep.sh bc" > /dev/null
 
 # Ensure instances are where they should be...
+disable_scheduler
+sleep 5
+
 fix_instance_ordering
 
 exit 1
