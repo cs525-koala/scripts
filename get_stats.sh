@@ -47,7 +47,7 @@ while [ 1 ];
 do
     # Get list of running instances...
     python $(which euca-describe-instances) > /tmp/desc
-    INSTIDS=$(cat /tmp/desc | grep i- | cut -f2)
+    INSTIDS=$(cat /tmp/desc | grep i- | grep running | cut -f2)
 
     # Clear out our temporary file
     echo -n > $TMP
