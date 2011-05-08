@@ -14,7 +14,12 @@ RESULTS_FILE=/opt/cpu_bench_times
 RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
 BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
 
-UNIQ="CPU$$"
+if [ "$1" = "" ]
+then
+    echo "Usage: $0 <identifier>"
+    exit 1
+fi
+UNIQ="eval-$1"
 
 echo "This run's uniq identifier is **$UNIQ**"
 
