@@ -6,7 +6,7 @@ import sys, re, datetime, time, subprocess, ping, socket, threading
 
 run_without_eucalyptus = False
 
-start_time_multiplier = 2
+start_time_multiplier = 10
 # start time base, [instance number, duration (exponent)]
 # start time base are randomly generated ints between 1 and 20
 cpu_task_values = dict(((4, [1,24]),
@@ -35,7 +35,7 @@ def subprocWrapper(command):
 def cpu_task(instance_number, exponent):
     task_start_time = prettyTime()
     print "\nAt ", task_start_time, "starting job with exponent", exponent, "on hadoop"+str(instance_number)
-    cpu_task_cmd = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no hadoop" + str(instance_number) + " /opt/cpu_bench.sh"
+    cpu_task_cmd = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no hadoop" + str(instance_number) + " \"/opt/cpu_bench.sh & \""
     if run_without_eucalyptus:
         print "debug mode, running: " + cpu_task_cmd
     else:
