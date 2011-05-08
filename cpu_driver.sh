@@ -137,6 +137,12 @@ done
 scp $SSH_OPT $PWD/killgrep.sh cn72: >& /dev/null
 scp $SSH_OPT $PWD/killgrep.sh cn73: >& /dev/null
 
+echo "Provisioning the hosts with updated cpu_bench.sh..."
+for i in `seq 1 $INSTCOUNT`
+do
+    scp $SSH_OPT $PWD/cpu_bench.sh root@hadoop$i:/opt/ >& /dev/null
+done
+
 # Make sure no rape tasks are running on the nc's...
 echo "Killing raep tasks on the nc's..."
 remoterun cn72 "./killgrep.sh cpu_raep" > /dev/null
@@ -157,6 +163,10 @@ sleep 5
 
 fix_instance_ordering
 
+#echo "Sleeping for 60 seconds to let the system settle..."
+#echo "(Performance stats, various euc caches, etc)"
+#sleep 60
+
 enable_scheduler
 
 # Main loop
@@ -172,7 +182,7 @@ do
     remoterunall "./killgrep.sh bc" > /dev/null
 
     # Kick off the tasks
-    $RUN ./cpu_benchmark.py
+    $RUN python -u ./cpu_benchmark.py
 
     # Copy results to file for this iteration...
     remoterunall "cp $RESULTS_FILE $RESULTS_FILE.$UNIQ.$ITER" > /dev/null
@@ -187,6 +197,7 @@ done
 
 # Copy results and commit them.
 RES_DIR=/opt/results/$UNIQ/
+rm -rf $RES_DIR >& /dev/null
 mkdir -p $RES_DIR
 for i in `seq 1 $INSTCOUNT`
 do
@@ -195,7 +206,7 @@ do
 done
 
 # Copy our execution log
-cp $RUNLOG $RES_DIR/
+cp $RUNLOG $RES_DIR/run.log
 
 cd /opt/results
 git add $RES_DIR
