@@ -61,17 +61,17 @@ function getidforindex() {
 
 function disable_scheduler() {
     echo "Disabling the scheduler..."
-    echo -n "30\n0\n0" > /tmp/sched.config
+    echo -en "30\n0\n0" > /tmp/sched.config
 }
 
 function enable_scheduler() {
     echo "Enabling the scheduler..."
-    echo -n "30\n4\n1" > /tmp/sched.config
+    echo -en "30\n4\n1" > /tmp/sched.config
 }
 
 function enable_manual_scheduler() {
     echo "Enabling the MANUAL scheduler..."
-    echo -n "30\n5\n1" > /tmp/sched.config
+    echo -en "30\n5\n1" > /tmp/sched.config
 }
 
 function fix_instance_ordering() {
