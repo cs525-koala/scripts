@@ -3,16 +3,20 @@
 # Drive cpu_bench scripts...
 
 # We make all kinds of assumptions about state/things working/etc :)
-# Assume hadoop1 <-->hadoop9 are running, all set up, etc.
+# Assume hadoop1 <-->hadoop15 are running, all set up, etc.
 
 #TODO: Increase offset times in cpu_benchmark.py? (LATER!)
 
 ITERS=2
 
+INSTCOUNT=15
 RESULTS_FILE=/opt/cpu_bench_times
 
 RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
 BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
+
+SSH_OPT="-o BatchMode=yes -o ConnectTimeout=60"
+SSH_OPT="$SSH_OPT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
 if [ "$1" = "" ]
 then
@@ -31,7 +35,7 @@ function remoterun() {
     HOST=$1
     CMD=$2
 
-    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=60"
+    SSH="ssh -q -q $SSH_OPT"
     RESULT=$($SSH root@$HOST "$RUN $CMD")
 
     echo $RESULT
@@ -40,7 +44,7 @@ function remoterun() {
 function remoterunall() {
     CMD=$1
 
-    for i in `seq 1 9`
+    for i in `seq 1 $INSTCOUNT`
     do
         remoterun hadoop$i "$CMD"
     done
@@ -49,20 +53,27 @@ function remoterunall() {
 # Main Execution
 
 # Provision the hosts with our killgrep command...
-for i in `seq 1 9`
+echo "Provisioning the hosts with our killgrep helper..."
+for i in `seq 1 $INSTCOUNT`
 do
-    scp $PWD/killgrep.sh root@hadoop$i: >& /dev/null
+    scp $SSH_OPT $PWD/killgrep.sh root@hadoop$i: >& /dev/null
 done
-scp $PWD/killgrep.sh cn72: >& /dev/null
-scp $PWD/killgrep.sh cn73: >& /dev/null
+scp $SSH_OPT $PWD/killgrep.sh cn72: >& /dev/null
+scp $SSH_OPT $PWD/killgrep.sh cn73: >& /dev/null
 
 # Make sure no rape tasks are running on the nc's...
+echo "Killing raep tasks on the nc's..."
 remoterun cn72 "./killgrep.sh cpu_raep" > /dev/null
 remoterun cn72 "./killgrep.sh bc" > /dev/null
 
 remoterun cn73 "./killgrep.sh cpu_raep" > /dev/null
 remoterun cn73 "./killgrep.sh bc" > /dev/null
 
+# Make sure the instances are clean
+echo "Killing load tasks on the instances..."
+remoterunall "./killgrep.sh cpu_bench" > /dev/null
+remoterunall "./killgrep.sh cpu_task" > /dev/null
+remoterunall "./killgrep.sh bc" > /dev/null
 
 # Main loop
 # Run each iteration of the eval, copy over the output
@@ -93,7 +104,7 @@ done
 # Copy results and commit them.
 RES_DIR=/opt/results/eval-$UNIQ/
 mkdir -p $RES_DIR
-for i in `seq 1 9`
+for i in `seq 1 $INSTCOUNT`
 do
     mkdir -p $RES_DIR/$i
     scp hadoop$i:"$RESULTS_FILE.$UNIQ*" $RES_DIR/$i/
