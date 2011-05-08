@@ -18,17 +18,19 @@ BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
 SSH_OPT="-o BatchMode=yes -o ConnectTimeout=60"
 SSH_OPT="$SSH_OPT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-if [ "$1" = "" ]
+if [[ "$1" = "" || $2 = "" ]]
 then
-    echo "Usage: $0 <identifier>"
+    echo "Usage: $0 <identifier> <scheduler>"
     exit 1
 fi
 UNIQ="eval-$1"
+SCHEDULER=$2
 
 RUNLOG=/tmp/$$.$UNIQ.log
 
 (
 echo "This run's uniq identifier is **$UNIQ**"
+echo "And will be using scheduler $SCHEDULER"
 
 # Comment this out to actually execute commands
 #RUN=echo
@@ -68,8 +70,8 @@ function disable_scheduler() {
 }
 
 function enable_scheduler() {
-    echo "Enabling the scheduler..."
-    echo -en "30\n4\n1" > /tmp/sched.config
+    echo "Enabling scheduler $SCHEDULER..."
+    echo -en "30\n$SCHEDULER\n1" > /tmp/sched.config
 }
 
 function enable_manual_scheduler() {
