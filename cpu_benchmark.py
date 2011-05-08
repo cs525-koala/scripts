@@ -9,16 +9,23 @@ run_without_eucalyptus = False
 start_time_multiplier = 10
 # start time base, [instance number, duration (exponent)]
 # start time base are randomly generated ints between 1 and 20
-cpu_task_values = dict(((4, [1,24]),
-                        (17, [2,24]),
-                        (3, [3,24]),
-                        (8, [4,24]),
-                        (5, [5,24]),
-                        (2, [6,24]),
-                        (7, [7,24]),
-                        (13, [8,24]),
-                        (11, [9,24])))
-                        
+# {12, 19, 20, 8, 12, 11, 15, 1, 16, 17, 16, 11, 9, 15, 13}
+cpu_task_values = dict(((12, [1, 24]),
+                        (19, [2, 24]),
+                        (20, [3, 24]),
+                        (8,  [4, 24]),
+                        (12, [5, 24]),
+                        (11, [6, 24]),
+                        (15, [7, 24]),
+                        (1,  [8, 24]),
+                        (16, [9, 24]),
+                        (17, [10,24]),
+                        (16, [11,24]),
+                        (11, [12,24]),
+                        (9,  [13,24]),
+                        (15, [14,24]),
+                        (13, [15,24])))
+
 def prettyTime():
     return time.strftime('%x: %X', time.gmtime())
 
@@ -35,7 +42,7 @@ def subprocWrapper(command):
 def cpu_task(instance_number, exponent):
     task_start_time = prettyTime()
     print "\nAt ", task_start_time, "starting job with exponent", exponent, "on hadoop"+str(instance_number)
-    cpu_task_cmd = "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no hadoop" + str(instance_number) + " \"/opt/cpu_bench.sh & \""
+    cpu_task_cmd = "ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no hadoop" + str(instance_number) + " \"/opt/cpu_bench.sh & \""
     if run_without_eucalyptus:
         print "debug mode, running: " + cpu_task_cmd
     else:
