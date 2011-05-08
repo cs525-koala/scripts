@@ -16,6 +16,7 @@ INSTCOUNT=15
 RESULTS_FILE=/opt/cpu_bench_times
 
 RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
+REPORTCMD="nohup python /opt/report_cpu.sh >& /dev/null < /dev/null &"
 BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
 
 SSH_OPT="-o BatchMode=yes -o ConnectTimeout=60"
@@ -162,6 +163,8 @@ function instance_clean() {
   remoterunall "./killgrep.sh cpu_bench" > /dev/null
   remoterunall "./killgrep.sh cpu_task" > /dev/null
   remoterunall "./killgrep.sh bc" > /dev/null
+  remoterunall "./killgrep.sh report_cpu" > /dev/null
+  remoterunall "$REPORTCMD" > /dev/null
 
   # Ensure instances are where they should be...
   disable_scheduler
