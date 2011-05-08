@@ -196,7 +196,9 @@ do
     remoterunall "./killgrep.sh bc" > /dev/null
 
     # Kick off the tasks
+    echo Starting at `date`
     $RUN python -u ./cpu_benchmark.py
+    echo Ended at `date`
 
     # Copy results to file for this iteration...
     remoterunall "cp $RESULTS_FILE $RESULTS_FILE.$UNIQ.$ITER" > /dev/null
