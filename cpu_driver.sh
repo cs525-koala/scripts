@@ -8,8 +8,8 @@
 #TODO: Increase offset times in cpu_benchmark.py? (LATER!)
 
 
-ITERMIN=7
-ITERMAX=7
+ITERMIN=8
+ITERMAX=10
 ITERSTEP=1
 
 INSTCOUNT=15
@@ -156,23 +156,25 @@ remoterun cn72 "./killgrep.sh bc" > /dev/null
 remoterun cn73 "./killgrep.sh cpu_raep" > /dev/null
 remoterun cn73 "./killgrep.sh bc" > /dev/null
 
-# Make sure the instances are clean
-echo "Killing load tasks on the instances..."
-remoterunall "./killgrep.sh cpu_bench" > /dev/null
-remoterunall "./killgrep.sh cpu_task" > /dev/null
-remoterunall "./killgrep.sh bc" > /dev/null
+function instance_clean() {
+  # Make sure the instances are clean
+  echo "Killing load tasks on the instances..."
+  remoterunall "./killgrep.sh cpu_bench" > /dev/null
+  remoterunall "./killgrep.sh cpu_task" > /dev/null
+  remoterunall "./killgrep.sh bc" > /dev/null
 
-# Ensure instances are where they should be...
-disable_scheduler
-sleep 5
+  # Ensure instances are where they should be...
+  disable_scheduler
+  sleep 5
 
-fix_instance_ordering
+  fix_instance_ordering
 
-echo "Sleeping for 60 seconds to let the system settle..."
-echo "(Performance stats, various euc caches, etc)"
-sleep 60
+  echo "Sleeping for 60 seconds to let the system settle..."
+  echo "(Performance stats, various euc caches, etc)"
+  sleep 60
 
-enable_scheduler
+  enable_scheduler
+}
 
 # Main loop
 # Run each iteration of the eval, copy over the output
@@ -191,9 +193,7 @@ do
     echo "ITERATION $ITER..."
 
     # Make sure the instances are clean
-    remoterunall "./killgrep.sh cpu_bench" > /dev/null
-    remoterunall "./killgrep.sh cpu_task" > /dev/null
-    remoterunall "./killgrep.sh bc" > /dev/null
+    instance_clean
 
     # Kick off the tasks
     echo Starting at `date`
