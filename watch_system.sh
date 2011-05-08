@@ -8,8 +8,8 @@ CCINST_CMD=" /tmp/CCclient_full localhost:8774 describeInstances"
 NCS="cn71 cn72 cn73"
 
 # Get list of running instances...
-python $(which euca-describe-instances) > /tmp/desc
-INSTIDS=$(cat /tmp/desc | grep i- | grep running | cut -f2)
+python $(which euca-describe-instances) > /tmp/desc_watch
+INSTIDS=$(cat /tmp/desc_watch | grep i- | grep running | cut -f2)
 
 $CCINST_CMD >& /tmp/ccinst
 
