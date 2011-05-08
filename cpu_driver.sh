@@ -8,8 +8,8 @@
 #TODO: Increase offset times in cpu_benchmark.py? (LATER!)
 
 
-ITERMIN=6
-ITERMAX=6
+ITERMIN=8
+ITERMAX=8
 ITERSTEP=1
 
 INSTCOUNT=15
