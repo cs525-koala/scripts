@@ -18,19 +18,15 @@ dfs_re = re.compile("Datanodes available: (\d+) [(]\d+ total, \d+ dead[)]")
 second_job_start_time = 1800 #(30 min)
 third_job_start_time = 3600 #(60 min)
 
-vm_emi = "emi-DBEE158C"
+vm_emi = "emi-4367172E"
 
-hadoop_instance_count = 9
+#inst_default = "m1.xlarge"
+#inst_default = "c1.medium"
+inst_default = "m1.small"
+
+hadoop_instance_count = 15
 hadoop_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
 hadoop_ip_list = []
-
-disk_instance_count = 8
-disk_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
-disk_ip_list = []
-
-cpu_instance_count = 8
-cpu_instance_list = [] #"instance" as use here, refers to a unique instance id representing the instance
-cpu_ip_list = []
 
 global_instance_list = []
 global_ip_list = [] #idk why, might as well track it
@@ -235,7 +231,7 @@ def wait_for_dfs_nodes(number):
     else:
         print "debug mode: nodes are ready"
 
-def start_instances(instance_count, instance_name, instance_type="m1.xlarge"):
+def start_instances(instance_count, instance_name, instance_type=inst_default):
     instance_list = []
     instance_start_cmd = "euca-run-instances -n " + str(instance_count)+ " " + vm_emi + " -t " + instance_type
     if run_without_eucalyptus:
@@ -435,9 +431,6 @@ for ip in hadoop_ip_list:
     else:
         scp_slave_proc = subprocWrapper(scp_slave_cmd)
         printOutput(scp_slave_proc)
-
-
-
 
 # get time
 
