@@ -7,7 +7,7 @@
 
 #TODO: Increase offset times in cpu_benchmark.py? (LATER!)
 
-ITERS=2
+ITERS=10
 
 INSTCOUNT=15
 RESULTS_FILE=/opt/cpu_bench_times
