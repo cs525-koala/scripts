@@ -16,7 +16,7 @@ INSTCOUNT=15
 RESULTS_FILE=/opt/cpu_bench_times
 
 RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
-REPORTCMD="nohup python /opt/report_cpu.sh >& /dev/null < /dev/null &"
+REPORTCMD="nohup python /opt/report_cpu.py >& /dev/null < /dev/null &"
 BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
 
 SSH_OPT="-o BatchMode=yes -o ConnectTimeout=60"
