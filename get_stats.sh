@@ -19,6 +19,7 @@ exec 2> $ERRLOG | tee $LOG
 function statfromhost() {
     HOST=$1
     SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=10"
+    SSH="$SSH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
     RESULT=$($SSH root@$HOST "cat $STATFILE")
 
     echo $RESULT
