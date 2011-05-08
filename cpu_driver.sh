@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Drive cpu_bench scripts...
 
@@ -11,13 +11,24 @@ ITERS=12
 
 RESULTS_FILE=/opt/cpu_bench_times
 
+KILL_RAEP_CMD="ps aux|grep raep|awk '{print \\\$2}'|xargs echo kill -9"
+RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
+BUNDLECMD="tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
+
+UNIQ="CPU$$"
+
+echo "This run's uniq identifier is **$UNIQ**"
+
+# Comment this out to actually execute commands
+RUN=echo
+
 # Runs the requested command on the requested host, 'safely'
 function remoterun() {
     HOST=$1
     CMD=$2
 
-    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=30"
-    RESULT=$($SSH root@$HOST "$CMD")
+    SSH="ssh -q -q -o BatchMode=yes -o ConnectTimeout=60"
+    RESULT=$($SSH root@$HOST "$RUN $CMD")
 
     echo $RESULT
 }
@@ -32,23 +43,20 @@ function remoterunall() {
 }
 
 # Make sure no rape tasks are running on the nc's...
-KILL_RAEP_CMD="ps aux|grep raep|awk '{print $2}'|xargs kill -9"
 remoterun cn72 "$KILL_RAEP_CMD"
 remoterun cn73 "$KILL_RAEP_CMD"
 
-RAEPCMD="nohup /opt/cpu_raep.sh >& /dev/null < /dev/null &"
-
-UNIQ="CPU$$"
-
-echo "This run's uniq identifier is **$UNIQ**"
 
 # Main loop
 # Run each iteration of the eval, copy over the output
 # And increase the number of raep processes on the nc's
 for i in `seq 1 $ITERS`
 do
+    echo "ITERATION $i..."
+
     # Kick off the tasks
-    ./cpu_benchmark.py
+    $RUN ./cpu_benchmark.py
+    sleep 3
 
     # Copy results to file for this iteration...
     remoterunall "cp $RESULTS_FILE $RESULTS_FILE.$UNIQ.$i"
@@ -59,4 +67,4 @@ do
 done
 
 # Bundle up the results for easier scp'ing later.
-remoterunall "tar cvf $RESULTS_FILE.$UNIQ.tar $RESULTS_FILE.$UNIQ.*"
+remoterunall $BUNDLECMD
