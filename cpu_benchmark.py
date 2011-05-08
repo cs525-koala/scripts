@@ -9,22 +9,22 @@ run_without_eucalyptus = False
 start_time_multiplier = 10
 # start time base, [instance number, duration (exponent)]
 # start time base are randomly generated ints between 1 and 20
-# {12, 19, 20, 8, 12, 11, 15, 1, 16, 17, 16, 11, 9, 15, 13}
-cpu_task_values = dict(((12, [1, 24]),
-                        (19, [2, 24]),
-                        (20, [3, 24]),
-                        (8,  [4, 24]),
-                        (12, [5, 24]),
-                        (11, [6, 24]),
-                        (15, [7, 24]),
-                        (1,  [8, 24]),
-                        (16, [9, 24]),
+# random order: seq 1 20 | sort -R
+cpu_task_values = dict(((4,  [1, 24]),
+                        (16, [2, 24]),
+                        (11, [3, 24]),
+                        (14, [4, 24]),
+                        (15, [5, 24]),
+                        (18, [6, 24]),
+                        (7,  [7, 24]),
+                        (12, [8, 24]),
+                        (1,  [9, 24]),
                         (17, [10,24]),
-                        (16, [11,24]),
-                        (11, [12,24]),
-                        (9,  [13,24]),
-                        (15, [14,24]),
-                        (13, [15,24])))
+                        (5,  [11,24]),
+                        (9,  [12,24]),
+                        (6,  [13,24]),
+                        (2,  [14,24]),
+                        (8,  [15,24])))
 
 def prettyTime():
     return time.strftime('%x: %X', time.gmtime())
